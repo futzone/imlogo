@@ -1,6 +1,8 @@
 import 'package:dication/main.dart';
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
+import 'package:dication/src/core/config/app_router.dart';
+import 'package:dication/src/ui/pages/results_page.dart';
 import 'package:dication/src/ui/screens/additional_screens/app_info_screen.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
 import 'package:flutter/material.dart';
@@ -86,7 +88,7 @@ class AppBarMain extends StatelessWidget {
               ),
             ),
             SimpleButton(
-              onPressed: () {},
+              onPressed: () => AppRouter.go(context, ResultsPage()),
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(80),

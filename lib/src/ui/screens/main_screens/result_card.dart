@@ -2,17 +2,17 @@ import 'dart:math';
 
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
+import 'package:dication/src/core/utils/get_rate_color.dart';
 import 'package:dication/src/ui/screens/main_screens/before_start_screen.dart';
-import 'package:dication/src/ui/widgets/app_buttons.dart';
 import 'package:dication/src/ui/widgets/hovered_widget.dart';
 import 'package:flutter/material.dart';
 
-class MainCard extends StatelessWidget {
-  const MainCard({super.key});
+class ResultCard extends StatelessWidget {
+  const ResultCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final issDone = Random().nextBool();
+    final rate = Random().nextInt(6);
     return HoveredWidget(
       onPressed: () => BeforeStartScreen.show(context),
       builder: (focused) => AnimatedContainer(
@@ -45,18 +45,17 @@ class MainCard extends StatelessWidget {
             Row(
               spacing: 16,
               children: [
-                if (!issDone)
-                  Icon(
-                    Icons.circle_outlined,
-                    color: Theme.of(context).primaryColor,
-                    size: 32,
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, right: 8),
+                  child: Text(
+                    "${rate == 0 ? rate + 1 : rate}",
+                    style: TextStyle(
+                      fontFamily: boldFamily,
+                      fontSize: context.isMobile ? 24 : 32,
+                      color: getRateColor(rate),
+                    ),
                   ),
-                if (issDone)
-                  Icon(
-                    Icons.check_circle_outline,
-                    color: Colors.green,
-                    size: 32,
-                  ),
+                ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,7 +119,8 @@ class MainCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                      if (!context.isMobile)
+
+                      if(!context.isMobile)
                         Row(
                           children: [
                             Icon(Icons.accessibility, size: 20),
@@ -135,7 +135,7 @@ class MainCard extends StatelessWidget {
                 ),
                 if (!context.isMobile)
                   Text(
-                    "Boshlash",
+                    "Batafsil",
                     style: TextStyle(
                       fontSize: 16,
                       color: Theme.of(context).primaryColor,
@@ -157,7 +157,7 @@ class MainCard extends StatelessWidget {
                 children: [
                   if (context.isMobile)
                     Text(
-                      "Boshlash",
+                      "Batafsil",
                       style: TextStyle(
                         fontSize: 16,
                         color: Theme.of(context).primaryColor,
