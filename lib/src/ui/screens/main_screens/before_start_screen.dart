@@ -2,21 +2,24 @@ import 'package:animate_gradient/animate_gradient.dart';
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
 import 'package:dication/src/core/config/app_router.dart';
+import 'package:dication/src/core/models/text_model.dart';
 import 'package:dication/src/ui/pages/dictation_page.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
 import 'package:dication/src/ui/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 
 class BeforeStartScreen extends StatelessWidget {
-  const BeforeStartScreen({super.key});
+  final TextModel model;
 
-  static void show(BuildContext context) {
+  const BeforeStartScreen({super.key, required this.model});
+
+  static void show(BuildContext context, TextModel model) {
     showModalBottomSheet(
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       context: context,
       builder: (BuildContext context) {
-        return BeforeStartScreen();
+        return BeforeStartScreen(model: model);
       },
     );
   }
@@ -56,8 +59,19 @@ class BeforeStartScreen extends StatelessWidget {
             ),
             SizedBox(height: 16),
             SimpleButton(
-              onPressed: (){
-                AppRouter.go(context, DictationPage());
+              onPressed: () {
+                if (model.url == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "Audio tayyorlanish jarayonida. Iltimos, hozircha boshqa diktantni sinab ko'ring!",
+                      ),
+                    ),
+                  );
+
+                  return;
+                }
+                AppRouter.go(context, DictationPage(model: model));
               },
               child: Container(
                 margin: EdgeInsets.only(bottom: 8),

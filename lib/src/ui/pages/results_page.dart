@@ -1,4 +1,5 @@
 import 'package:dication/src/core/config/app_fonts.dart';
+import 'package:dication/src/core/database/static_database.dart';
 import 'package:dication/src/ui/screens/main_screens/result_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -23,10 +24,10 @@ class ResultsPage extends HookConsumerWidget {
         ),
       ),
       body: ListView.builder(
-        itemCount: 23,
+        itemCount: StaticDatabase.texts.length,
         padding: EdgeInsets.only(bottom: 24),
         itemBuilder: (context, index) {
-          return ResultCard();
+          return ResultCard(model: StaticDatabase.texts[index]);
         },
       ),
     );

@@ -2,19 +2,22 @@ import 'dart:math';
 
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
+import 'package:dication/src/core/models/text_model.dart';
 import 'package:dication/src/core/utils/get_rate_color.dart';
 import 'package:dication/src/ui/screens/main_screens/before_start_screen.dart';
 import 'package:dication/src/ui/widgets/hovered_widget.dart';
 import 'package:flutter/material.dart';
 
 class ResultCard extends StatelessWidget {
-  const ResultCard({super.key});
+  final TextModel model;
+
+  const ResultCard({super.key, required this.model});
 
   @override
   Widget build(BuildContext context) {
     final rate = Random().nextInt(6);
     return HoveredWidget(
-      onPressed: () => BeforeStartScreen.show(context),
+      onPressed: () => BeforeStartScreen.show(context, model),
       builder: (focused) => AnimatedContainer(
         duration: Duration(milliseconds: 300),
         margin: EdgeInsets.only(top: 16, left: 24, right: 24),
@@ -63,7 +66,7 @@ class ResultCard extends StatelessWidget {
                     spacing: 8,
                     children: [
                       Text(
-                        "Diktant matni sarlavhasi va bu bir necha qator bo'lishi ham mumkin",
+                        model.title,
                         style: TextStyle(
                           fontSize: context.isDesktop ? 18 : 14,
                           fontFamily: boldFamily,
@@ -77,7 +80,7 @@ class ResultCard extends StatelessWidget {
                               children: [
                                 Icon(Icons.timelapse_outlined, size: 20),
                                 Text(
-                                  "Davomiyligi: 9 min",
+                                  "Davomiyligi: ${model.time} min",
                                   style: TextStyle(fontFamily: mediumFamily),
                                 ),
                               ],
@@ -86,7 +89,7 @@ class ResultCard extends StatelessWidget {
                               children: [
                                 Icon(Icons.text_fields, size: 20),
                                 Text(
-                                  "So'zlar soni: 987 ta",
+                                  "So'zlar soni: ${model.length} ta",
                                   style: TextStyle(fontFamily: mediumFamily),
                                 ),
                               ],
@@ -95,7 +98,7 @@ class ResultCard extends StatelessWidget {
                               children: [
                                 Icon(Icons.accessibility, size: 20),
                                 Text(
-                                  "Yosh chegarasi: 8-10 yosh (1-3-sinflar)",
+                                  "Yosh chegarasi: ${model.ageName} yosh, (${model.className})",
                                   style: TextStyle(fontFamily: mediumFamily),
                                 ),
                               ],
@@ -108,24 +111,23 @@ class ResultCard extends StatelessWidget {
                           children: [
                             Icon(Icons.timelapse_outlined, size: 20),
                             Text(
-                              "Davomiyligi: 9 min",
+                              "Davomiyligi: ${model.time} min",
                               style: TextStyle(fontFamily: mediumFamily),
                             ),
                             SizedBox(width: 16),
                             Icon(Icons.text_fields, size: 20),
                             Text(
-                              "So'zlar soni: 987 ta",
+                              "So'zlar soni: ${model.length} ta",
                               style: TextStyle(fontFamily: mediumFamily),
                             ),
                           ],
                         ),
-
-                      if(!context.isMobile)
+                      if (!context.isMobile)
                         Row(
                           children: [
                             Icon(Icons.accessibility, size: 20),
                             Text(
-                              "Yosh chegarasi: 8-10 yosh (1-3-sinflar)",
+                              "Yosh chegarasi: ${model.ageName} yosh, (${model.className})",
                               style: TextStyle(fontFamily: mediumFamily),
                             ),
                           ],

@@ -2,6 +2,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
 import 'package:dication/src/core/config/app_router.dart';
+import 'package:dication/src/core/models/text_model.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
 import 'package:dication/src/ui/widgets/audio_progress_bar.dart';
 import 'package:flutter/material.dart';
@@ -9,16 +10,16 @@ import 'package:flutter/material.dart';
 import '../widgets/countdown_widget.dart';
 
 class DictationPage extends StatefulWidget {
-  const DictationPage({super.key});
+  final TextModel model;
+
+  const DictationPage({super.key, required this.model});
 
   @override
   State<DictationPage> createState() => _DictationPageState();
 }
 
 class _DictationPageState extends State<DictationPage> {
-  final _source = UrlSource(
-    "https://firebasestorage.googleapis.com/v0/b/metr-uz.appspot.com/o/G-aybulla-Tursunov-Xastamanu-Audio-Version.m4a?alt=media&token=6a20f5d2-e3b6-4cfb-9344-48b985f0a136",
-  );
+  get _source => UrlSource(widget.model.url ?? "");
 
   final TextEditingController _textEditingController = TextEditingController();
 
@@ -48,7 +49,7 @@ class _DictationPageState extends State<DictationPage> {
       setState(() {
         _isPlaying = false;
         _duration = Duration.zero;
-        _position = _duration;
+        _position = Duration.zero;
       });
     });
   }
@@ -183,6 +184,9 @@ class _DictationPageState extends State<DictationPage> {
                             } else {
                               await _player.resume().then((_) => setState(() => _isPlaying = true));
                             }
+
+
+
                           },
                           child: Icon(
                             _isPlaying ? Icons.pause_circle_outline : Icons.play_circle_outline,
