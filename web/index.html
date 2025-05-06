@@ -31,8 +31,70 @@
 
   <title>dication</title>
   <link rel="manifest" href="manifest.json">
+
 </head>
-<body>
-  <script src="flutter_bootstrap.js" async></script>
+<style>
+  .container{
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: auto;
+    flex-direction: column;
+}
+
+.indicator{
+    width: 100px;
+    height: 100px;
+    margin-bottom: 15px;
+
+}
+
+.progress-bar {
+  width: 100px;
+  background-color: #f3f3f3;
+  border-radius: 4px;
+}
+
+@keyframes progress {
+  0% {
+    width: 50%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.progress-bar-fill {
+  display: block;
+  height: 5px;
+  background-color: #46494b;
+  border-radius: 4px;
+  transition: width 0.2s ease-in;
+  animation: progress 5s ease-in-out forwards;
+}
+</style>
+<body style="overflow: hidden;">
+<div id="loading_indicator" class="container">
+
+  <img class="indicator" src="./assets/splash_logo.svg"/>
+  <div class="progress-bar">
+    <div class="progress-bar-fill" style="width: 50%;"></div>
+  </div>
+</div>
+
+
+
+<script src="flutter_bootstrap.js" async></script>
+
+<script>
+  window.onload= function(){
+    setTimeout(() => {
+      var loadingIndicator = document.getElementById('loading_indicator');
+      if(loadingIndicator)loadingIndicator.remove()
+    }, 10000);
+  }
+</script>
 </body>
 </html>

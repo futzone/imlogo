@@ -3,11 +3,13 @@ import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
 import 'package:dication/src/core/config/app_router.dart';
 import 'package:dication/src/core/models/text_model.dart';
+import 'package:dication/src/core/services/dictation_manager.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
 import 'package:dication/src/ui/widgets/audio_progress_bar.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/countdown_widget.dart';
+import 'dictation_result_page.dart';
 
 class DictationPage extends StatefulWidget {
   final TextModel model;
@@ -71,6 +73,17 @@ class _DictationPageState extends State<DictationPage> {
     _player.stop();
     _player.dispose();
     super.dispose();
+  }
+
+  void _completeDictation() {
+    var evaluator1 = DiktantEvaluator(
+      originalText: widget.model.text,
+      userText: _textEditingController.text.trim(),
+    );
+
+    evaluator1.analyze();
+    Future.delayed(Duration(milliseconds: 100));
+    AppRouter.open(context, DictationResultPage(evaluator: evaluator1, text: widget.model));
   }
 
   @override
@@ -184,9 +197,6 @@ class _DictationPageState extends State<DictationPage> {
                             } else {
                               await _player.resume().then((_) => setState(() => _isPlaying = true));
                             }
-
-
-
                           },
                           child: Icon(
                             _isPlaying ? Icons.pause_circle_outline : Icons.play_circle_outline,
@@ -354,7 +364,7 @@ class _DictationPageState extends State<DictationPage> {
                   ),
                   SimpleButton(
                     onPressed: () {
-                      AppRouter.close(context);
+                      _completeDictation();
                     },
                     child: Container(
                       margin: EdgeInsets.only(bottom: 8),
@@ -391,7 +401,7 @@ class _DictationPageState extends State<DictationPage> {
                   children: [
                     SimpleButton(
                       onPressed: () {
-                        AppRouter.close(context);
+                        _completeDictation();
                       },
                       child: Container(
                         decoration: BoxDecoration(

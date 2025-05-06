@@ -26,6 +26,8 @@ class PrimaryButton extends StatelessWidget {
             color: focused ? Theme.of(context).primaryColor : null,
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 title ?? "Sinab ko'rish",
