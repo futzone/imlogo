@@ -106,8 +106,6 @@ class _DictationPageState extends ConsumerState<DictationPage> {
     );
 
     dictationController.onCreate(work, evaluator1);
-
-
   }
 
   @override
