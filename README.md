@@ -1,16 +1,60 @@
-# dication
+# ✍️ Imlo Go — O‘zbek tilida diktant yozish ilovasi
 
-Uzbek language dictation app
+**Imlo Go** — bu zamonaviy o‘zbek tilida diktant yozish, imlo xatolarni avtomatik aniqlash va o‘z bilim darajangizni baholash imkonini beruvchi mobil va web ilova.
 
-## Getting Started
+## 📲 Platformalar
 
-This project is a starting point for a Flutter application.
+- ✅ Android
+- ✅ iOS
+- ✅ Web
+- ✅ Windows
 
-A few resources to get you started if this is your first Flutter project:
+## 🚀 Texnologiyalar
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- [Flutter](https://flutter.dev/) — multiplatforma UI
+- [`audioplayers`](https://pub.dev/packages/audioplayers) `v6.4.0` — audio diktantlarni ijro etish
+- [`flutter_riverpod`](https://pub.dev/packages/flutter_riverpod) `v2.6.1` — state management
+- Adaptiv dizayn, tez ishlash va UXga e'tibor qaratilgan
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🧠 Asosiy imkoniyatlar
+
+- 🎧 **Audio eshitish** — Diktantni audio orqali tinglang  
+- ✍️ **Matn yozish** — Eshitganingizni matn ko‘rinishida yozing  
+- ✅ **Imlo tekshiruvi** — Avtomatik tarzda imlo xatolar aniqlanadi  
+- 📊 **Natija ko‘rish** — Diktant yakunida baho va xatoliklar ro‘yxati  
+- 📚 **Tarix** — O‘tmishdagi diktantlar natijalarini ko‘rish
+
+## 📦 Loyihani ishga tushurish
+
+```bash
+git clone https://github.com/futzone/imlogo.git
+cd imlogo
+flutter pub get
+flutter run
+````
+
+### Web versiyasi uchun:
+
+```bash
+flutter run -d chrome
+```
+
+## 🌐 Live Preview
+
+👉 [**Web versiya: imlogo.uz**](https://imlogo.uz)
+
+## 🤝 Hissa qo‘shish
+
+Hissa qo‘shmoqchi bo‘lsangiz, pull request oching yoki muammo (issue) yarating. Takliflar va yordamlar har doim xush kelibsiz!
+
+## 📄 Litsenziya
+
+MIT License — `LICENSE` faylini ko‘ring.
+
+---
+
+📢 *Imlo Go — sizning o‘zbek tilidagi imlo mahoratingizni mustahkamlash uchun eng yaxshi raqamli yordamchi!*
+
+
+
+ 
