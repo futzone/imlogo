@@ -1,5 +1,6 @@
 import 'package:dication/src/core/config/app_fonts.dart';
 import 'package:dication/src/core/database/static_database.dart';
+import 'package:dication/src/providers/history_provider.dart';
 import 'package:dication/src/ui/screens/main_screens/result_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -23,13 +24,23 @@ class ResultsPage extends HookConsumerWidget {
           ),
         ),
       ),
-      body: ListView.builder(
-        itemCount: StaticDatabase.texts.length,
-        padding: EdgeInsets.only(bottom: 24),
-        itemBuilder: (context, index) {
-          return ResultCard(model: StaticDatabase.texts[index]);
-        },
-      ),
+      body: ref.watch(historyProvider).when(
+            loading: () => Center(child: CircularProgressIndicator()),
+            error: (error, stackTrace) => Text("$error"),
+            data: (works) {
+              if(works.isEmpty) {
+                return Center(child: Text("Sizda topshirilgan diktantlar yo'q"));
+              }
+
+              return ListView.builder(
+                itemCount: works.length,
+                padding: EdgeInsets.only(bottom: 24),
+                itemBuilder: (context, index) {
+                  return ResultCard(model: works[index]);
+                },
+              );
+            },
+          ),
     );
   }
 }

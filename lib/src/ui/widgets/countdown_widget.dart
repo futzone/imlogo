@@ -6,11 +6,13 @@ import '../../core/config/app_fonts.dart';
 class CountdownTimer extends StatefulWidget {
   final int seconds;
   final VoidCallback? onFinished;
+  final void Function(int time) onUpdateTime;
 
   const CountdownTimer({
     super.key,
     required this.seconds,
     this.onFinished,
+    required this.onUpdateTime,
   });
 
   @override
@@ -34,6 +36,8 @@ class _CountdownTimerState extends State<CountdownTimer> {
         setState(() {
           remainingSeconds--;
         });
+
+        widget.onUpdateTime(remainingSeconds);
       } else {
         timer.cancel();
         if (widget.onFinished != null) {

@@ -2,25 +2,30 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
 import 'package:dication/src/core/config/app_router.dart';
+import 'package:dication/src/core/controllers/dictation_controller.dart';
 import 'package:dication/src/core/models/text_model.dart';
+import 'package:dication/src/core/models/work.dart';
 import 'package:dication/src/core/services/dictation_manager.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
 import 'package:dication/src/ui/widgets/audio_progress_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/countdown_widget.dart';
 import 'dictation_result_page.dart';
 
-class DictationPage extends StatefulWidget {
+class DictationPage extends ConsumerStatefulWidget {
   final TextModel model;
 
   const DictationPage({super.key, required this.model});
 
   @override
-  State<DictationPage> createState() => _DictationPageState();
+  ConsumerState<DictationPage> createState() => _DictationPageState();
 }
 
-class _DictationPageState extends State<DictationPage> {
+class _DictationPageState extends ConsumerState<DictationPage> {
+  int _time = 0;
+
   get _source => UrlSource(widget.model.url ?? "");
 
   final TextEditingController _textEditingController = TextEditingController();
@@ -76,14 +81,33 @@ class _DictationPageState extends State<DictationPage> {
   }
 
   void _completeDictation() {
+    DictationController dictationController = DictationController(context: context, ref: ref);
+    dictationController.showLoading();
+
     var evaluator1 = DiktantEvaluator(
       originalText: widget.model.text,
       userText: _textEditingController.text.trim(),
     );
 
     evaluator1.analyze();
-    Future.delayed(Duration(milliseconds: 100));
-    AppRouter.open(context, DictationResultPage(evaluator: evaluator1, text: widget.model));
+    Work work = Work(
+      id: '',
+      createdDate: '',
+      ball: evaluator1.evaluate100PointScaleMethod3(),
+      baho: evaluator1.evaluate5PointScale().toDouble(),
+      errors: evaluator1.getDetailedErrors(),
+      text: widget.model,
+      imloErrorCount: evaluator1.imloErrorCount,
+      punktuatsionErrorCount: evaluator1.punktuatsionErrorCount,
+      uslubiyErrorCount: evaluator1.uslubiyErrorCount,
+      grafikErrorCount: evaluator1.grafikErrorCount,
+      worktime: _time,
+      input: _textEditingController.text.trim(),
+    );
+
+    dictationController.onCreate(work, evaluator1);
+
+
   }
 
   @override
@@ -97,8 +121,18 @@ class _DictationPageState extends State<DictationPage> {
           fontSize: 20,
         ),
         iconTheme: IconThemeData(color: Colors.white),
-        title: Text("Diktant sarlavhasi"),
-        actions: [CountdownTimer(seconds: 230), SizedBox(width: 24)],
+        title: Text(widget.model.title),
+        actions: [
+          CountdownTimer(
+            seconds: widget.model.time,
+            onUpdateTime: (int time) {
+              setState(() {
+                _time = time;
+              });
+            },
+          ),
+          SizedBox(width: 24)
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.only(left: 24, right: 24, top: 16),

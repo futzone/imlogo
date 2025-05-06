@@ -14,3 +14,10 @@ extension ToStringXato on ErrorType {
     return "Grafik";
   }
 }
+ErrorType errorTypeFromString(String type) {
+  return ErrorType.values.firstWhere((e) => e.toString().split('.').last == type);
+}
+
+String errorTypeToString(ErrorType type) {
+  return type.toString().split('.').last;
+}

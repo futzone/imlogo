@@ -40,4 +40,18 @@ class TextModel {
 
     return kList;
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'text': text,
+      'className': className,
+      'ageName': ageName,
+      'length': length,
+      'time': time,
+      'url': url,
+    };
+  }
+
 }

@@ -1,23 +1,27 @@
 import 'dart:math';
-
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
-import 'package:dication/src/core/models/text_model.dart';
+import 'package:dication/src/core/config/app_router.dart';
+import 'package:dication/src/core/models/work.dart';
 import 'package:dication/src/core/utils/get_rate_color.dart';
+import 'package:dication/src/core/utils/time_utils.dart';
 import 'package:dication/src/ui/screens/main_screens/before_start_screen.dart';
 import 'package:dication/src/ui/widgets/hovered_widget.dart';
 import 'package:flutter/material.dart';
 
+import '../../pages/dictation_result_page.dart';
+
 class ResultCard extends StatelessWidget {
-  final TextModel model;
+  final Work model;
 
   const ResultCard({super.key, required this.model});
 
   @override
   Widget build(BuildContext context) {
-    final rate = Random().nextInt(6);
     return HoveredWidget(
-      onPressed: () => BeforeStartScreen.show(context, model),
+      onPressed: () {
+        AppRouter.go(context, DictationResultPage(useBack: true, work: model));
+      },
       builder: (focused) => AnimatedContainer(
         duration: Duration(milliseconds: 300),
         margin: EdgeInsets.only(top: 16, left: 24, right: 24),
@@ -51,11 +55,11 @@ class ResultCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 8, right: 8),
                   child: Text(
-                    "${rate == 0 ? rate + 1 : rate}",
+                    "${model.baho.round()}",
                     style: TextStyle(
                       fontFamily: boldFamily,
                       fontSize: context.isMobile ? 24 : 32,
-                      color: getRateColor(rate),
+                      color: getRateColor(model.baho),
                     ),
                   ),
                 ),
@@ -66,7 +70,7 @@ class ResultCard extends StatelessWidget {
                     spacing: 8,
                     children: [
                       Text(
-                        model.title,
+                        model.text.title,
                         style: TextStyle(
                           fontSize: context.isDesktop ? 18 : 14,
                           fontFamily: boldFamily,
@@ -80,7 +84,7 @@ class ResultCard extends StatelessWidget {
                               children: [
                                 Icon(Icons.timelapse_outlined, size: 20),
                                 Text(
-                                  "Davomiyligi: ${model.time} min",
+                                  "Sarflangan vaqt: ${formatTime(model.worktime)}",
                                   style: TextStyle(fontFamily: mediumFamily),
                                 ),
                               ],
@@ -89,7 +93,7 @@ class ResultCard extends StatelessWidget {
                               children: [
                                 Icon(Icons.text_fields, size: 20),
                                 Text(
-                                  "So'zlar soni: ${model.length} ta",
+                                  "So'zlar soni: ${model.text.length} ta",
                                   style: TextStyle(fontFamily: mediumFamily),
                                 ),
                               ],
@@ -98,7 +102,7 @@ class ResultCard extends StatelessWidget {
                               children: [
                                 Icon(Icons.accessibility, size: 20),
                                 Text(
-                                  "Yosh chegarasi: ${model.ageName} yosh, (${model.className})",
+                                  "Yosh chegarasi: ${model.text.ageName} yosh, (${model.text.className})",
                                   style: TextStyle(fontFamily: mediumFamily),
                                 ),
                               ],
@@ -111,13 +115,13 @@ class ResultCard extends StatelessWidget {
                           children: [
                             Icon(Icons.timelapse_outlined, size: 20),
                             Text(
-                              "Davomiyligi: ${model.time} min",
+                              "Sarflangan vaqt: ${formatTime(model.worktime)}",
                               style: TextStyle(fontFamily: mediumFamily),
                             ),
                             SizedBox(width: 16),
                             Icon(Icons.text_fields, size: 20),
                             Text(
-                              "So'zlar soni: ${model.length} ta",
+                              "So'zlar soni: ${model.text.length} ta",
                               style: TextStyle(fontFamily: mediumFamily),
                             ),
                           ],
@@ -127,7 +131,7 @@ class ResultCard extends StatelessWidget {
                           children: [
                             Icon(Icons.accessibility, size: 20),
                             Text(
-                              "Yosh chegarasi: ${model.ageName} yosh, (${model.className})",
+                              "Yosh chegarasi: ${model.text.ageName} yosh, (${model.text.className})",
                               style: TextStyle(fontFamily: mediumFamily),
                             ),
                           ],
