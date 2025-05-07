@@ -1,3 +1,237 @@
+# Imlo Go loyihasi qo'llanmalari
+
+## 1. Kirish
+
+**Maqsad:** Foydalanuvchilarga qulay interfeys orqali diktant yozish, uni avtomatik tekshirtirish va xatolar ustida ishlash imkoniyatini berish.
+
+**Platformalar:**
+*   Web
+*   Windows
+*   Android
+*   iOS
+
+## 2. Loyihaning Arxitekturasi va Ishlatilgan Texnologiyalar
+
+Loyiha zamonaviy va samarali texnologiyalar yordamida ishlab chiqilgan bo‘lib, quyidagi asosiy komponentlardan tashkil topgan:
+
+### 2.1. Frontend (Foydalanuvchi Interfeysi)
+*   **Texnologiya:** Flutter Framework
+*   **Afzalliklari:**
+    *   Bir martalik kod bazasi orqali bir nechta platforma (Web, Desktop, Mobile) uchun ilova yaratish imkoniyati.
+    *   Chiroyli va tez ishlaydigan foydalanuvchi interfeyslarini yaratish uchun keng imkoniyatlar.
+    *   Faol hamjamiyat va ko‘plab tayyor paketlar (kutubxonalar).
+
+### 2.2. Audio Kontentni Boshqarish
+*   **Audio ijrosi uchun:** `audioplayers` Flutter paketi.
+    *   **Vazifasi:** Diktant audio yozuvlarini ilova ichida ijro etish.
+*   **Audio fayllarni saqlash uchun:** Supabase Cloud Storage.
+    ![Supabase](assets/images/img_1.png)
+    *   **Vazifasi:** Diktant audio fayllarini (masalan, `.m4a` formatida) bulutli serverda xavfsiz saqlash va ularga URL orqali murojaat qilish.
+    *   **Afzalliklari:** Ishonchli, masshtablanuvchi va qulay boshqaruv paneli.
+
+### 2.3. Diktant Matnlari va Ma’lumotlarini Saqlash
+*   **Texnologiya:** Statik NoSQL (JSON) ma’lumotlar bazasi.
+*   **Vazifasi:** Diktantlar haqidagi asosiy ma’lumotlarni (ID, sinf, yosh toifasi, sarlavha, matn, audio URL manzili va hokazo) saqlash.
+*   **Sababi:** Loyihaning dastlabki bosqichida backend (server qismi) yaratishga ketadigan vaqtni tejash va tezroq ishga tushirish. Ma’lumotlar JSON fayllarida oldindan tayyorlanib, ilovaga biriktiriladi yoki serverdan yuklab olinadi.
+*   **Ma’lumotlar bazasi strukturasi (misol):**
+    ```json
+    [
+      {
+        "id": 1,
+        "className": "1-sinf",
+        "ageName": "7-8 yosh", // Yosh toifasi aniqroq
+        "title": "ULKAN SHAHAR",
+        "text": "Toshkent ko‘p millatli ulkan shahar bo‘lib, hozir unda 3 millionga yaqin aholi yashaydi. Uning chiroyi kundan-kunga ortib boryapti.",
+        "wordCount": 26, // So'zlar soni (dasturiy hisoblash mumkin)
+        "estimatedTimeMinutes": 2, // Diktant uchun taxminiy vaqt (daqiqa)
+        "audioUrl": "https://jvqhqinpulczyhgckgbb.supabase.co/storage/v1/object/public/imlogo-audios//Ulkan%20shahar.m4a"
+      },
+      {
+        "id": 2,
+        // ... keyingi diktant ma'lumotlari ...
+      }
+    ]
+    ```
+
+### 2.4. Foydalanuvchi Natijalarini Mahalliy Saqlash
+*   **Texnologiya:** Hive DB (Flutter uchun tezkor NoSQL ma’lumotlar bazasi).
+*   **Vazifasi:** Foydalanuvchining bajargan diktantlari natijalarini (olgan ballari, xatolari, yozgan matni va hokazo) qurilmaning o‘zida (mahalliy) saqlash.
+*   **Afzalliklari:** Tez ishlashi, Flutter bilan oson integratsiyasi, offline rejimda ham ishlash imkoniyati.
+*   **Saqlanadigan ma’lumotlar strukturasi (`Work` klassi misolida):**
+    ```dart
+    // Dart klassi (Hive uchun adapter generatsiya qilinadi)
+    // @HiveType(typeId: 0) // Misol uchun typeId
+    class Work {
+      // @HiveField(0)
+      String id; // Unikal identifikator (masalan, UUID yoki timestamp)
+
+      // @HiveField(1)
+      String diktantId; // Qaysi diktantga tegishli ekanligi (JSON bazadagi ID)
+
+      // @HiveField(2)
+      DateTime createdDate; // Topshirilgan sana va vaqt
+
+      // @HiveField(3)
+      double score5Point; // 5 ballik tizimdagi baho
+
+      // @HiveField(4)
+      double score100Point; // 100 ballik tizimdagi ball (3-usul bo'yicha foiz)
+
+      // @HiveField(5)
+      List<DetectedErrorHive> errors; // Aniqlangan xatolar ro'yxati (Hive uchun moslashtirilgan)
+
+      // @HiveField(6)
+      String originalDiktantTitle; // Original diktant sarlavhasi
+
+      // @HiveField(7)
+      String originalDiktantText; // Original diktant matni (qayta ko'rish uchun)
+
+      // @HiveField(8)
+      String userInputText; // Foydalanuvchi kiritgan matn
+
+      // @HiveField(9)
+      int imloErrorCount; // Unikal imlo xatolari soni
+
+      // @HiveField(10)
+      int punktuatsionErrorCount; // Unikal punktuatsion xatolar soni
+
+      // @HiveField(11)
+      int uslubiyErrorCount; // Unikal uslubiy xatolar soni
+
+      // @HiveField(12)
+      int grafikErrorCount; // Unikal grafik xatolar soni
+
+      // @HiveField(13)
+      int workTimeSeconds; // Diktantni bajarishga ketgan vaqt (sekundlarda)
+
+      Work({
+        required this.id,
+        required this.diktantId,
+        required this.createdDate,
+        required this.score5Point,
+        required this.score100Point,
+        required this.errors,
+        required this.originalDiktantTitle,
+        required this.originalDiktantText,
+        required this.userInputText,
+        required this.imloErrorCount,
+        required this.punktuatsionErrorCount,
+        required this.uslubiyErrorCount,
+        required this.grafikErrorCount,
+        required this.workTimeSeconds,
+      });
+    }
+
+    // DetectedError klassini Hive uchun moslashtirish kerak bo'ladi
+    // @HiveType(typeId: 1)
+    class DetectedErrorHive {
+      // @HiveField(0)
+      String type; // ErrorType.toString()
+
+      // @HiveField(1)
+      String description;
+
+      // @HiveField(2)
+      String originalFragment;
+
+      // @HiveField(3)
+      String userFragment;
+
+      // @HiveField(4)
+      String specificRuleCode;
+
+      // @HiveField(5)
+      double penaltyMultiplier;
+
+      DetectedErrorHive({ /* ... */ });
+    }
+    ```
+    *   **JSON Misoli (Hive ga saqlanadigan `Work` obyekti uchun):**
+        ```json
+        {
+          "id": "uuid_string_123",
+          "diktantId": "1", // JSON bazadagi diktant ID si
+          "createdDate": "2023-10-27T10:30:00Z", // ISO 8601 formatida
+          "score5Point": 4.0,
+          "score100Point": 85.5,
+          "errors": [
+            {
+              "type": "IMLO", // ErrorType.IMLO.toString().split('.').last
+              "description": "So'zni noto'g'ri yozish",
+              "originalFragment": "Toshkent",
+              "userFragment": "Toshken",
+              "specificRuleCode": "imlo_soz_almashtirish_toshkent_vs_toshken",
+              "penaltyMultiplier": 1.0
+            },
+            {
+              "type": "PUNKTUATSION",
+              "description": "Tinish belgisi tushib qolgan",
+              "originalFragment": ",",
+              "userFragment": "",
+              "specificRuleCode": "punkt_tushibqolgan_umumiy",
+              "penaltyMultiplier": 1.0
+            }
+          ],
+          "originalDiktantTitle": "ULKAN SHAHAR",
+          "originalDiktantText": "Toshkent ko‘p millatli ulkan shahar bo‘lib...",
+          "userInputText": "Toshken ko‘p millatli ulkan shahar bo‘lib...",
+          "imloErrorCount": 1,
+          "punktuatsionErrorCount": 1,
+          "uslubiyErrorCount": 0,
+          "grafikErrorCount": 0,
+          "workTimeSeconds": 180 // Masalan, 3 daqiqa
+        }
+        ```
+
+### 2.5. Diktantni Tekshirish Logikasi
+*   **Komponent:** `DiktantEvaluator` klassi (Dart tilida, bu haqida quyiroqda ham batafsil to'xtalamiz).
+*   **Vazifasi:** Foydalanuvchi matnini original matn bilan solishtirish, xatolarni aniqlash va baholash.
+*   **Asosiy algoritmlar va yondashuvlar:**
+    1.  **Tokenizatsiya:** Matnni so‘z va tinish belgilariga ajratish.
+    2.  **Normallashtirish:** Tokenlarni solishtirish uchun standart ko‘rinishga keltirish.
+    3.  **Alignment (Juftlashtirish):** Levenshtein masofasi algoritmi yordamida original va foydalanuvchi tokenlarini juftlashtirish (mos keladigan, almashtirilgan, tushib qolgan, ortiqcha tokenlarni aniqlash).
+    4.  **Xatolarni Klassifikatsiya Qilish:** Aniqlangan farqlarni imloviy, punktuatsion, uslubiy, grafik xato turlariga ajratish. Maxsus qoidalar (masalan, "Zamon" vs "Xamon", "h" vs "x", tutuq belgisi, bosh harf, grafik belgilar) hisobga olinadi.
+    5.  **"Bir Tipdagi Xato" Qoidasi:** Bir nechta joyda takrorlangan bir xil turdagi xatoni bitta deb hisoblash.
+    6.  **"Katastrofik Nomuvofiqlik"ni Aniqlash:** Foydalanuvchi matni originalga umuman mos kelmaganda (masalan, ma’nosiz so‘zlar kiritilganda) alohida ishlov berish va bahoni keskin pasaytirish.
+    7.  **Baholash:** Bir nechta (5 ballik, 100 ballik) shkala bo‘yicha natijani hisoblash.
+
+## 3. Asosiy Funksionallik
+
+1.  **Diktantlar Ro‘yxati:** Foydalanuvchi yoshi va sinfiga mos diktantlarni ko‘rish.
+2.  **Diktant Tanlash:** Ro‘yxatdan diktant tanlash va u haqida ma’lumot (sarlavha, taxminiy vaqt, so‘zlar soni) olish.
+3.  **Audio Ijrosi:** Tanlangan diktantning audio yozuvini tinglash.
+4.  **Matn Kiritish Maydoni:** Diktant matnini yozish uchun qulay interfeys.
+5.  **Vaqt Taymeri (ixtiyoriy):** Diktant yozish uchun ajratilgan vaqtni ko‘rsatish.
+6.  **Tekshirish Tugmasi:** Yozilgan diktantni tekshirish uchun yuborish.
+7.  **Natijalarni Ko‘rsatish:**
+    *   Umumiy baho (5 ballik va/yoki 100 ballik).
+    *   Xatolar soni (turlari bo‘yicha).
+    *   Xatolarning batafsil ro‘yxati (originaldagi to‘g‘ri variant va foydalanuvchi yozgan xato variant bilan birga).
+    *   To‘g‘ri matnni ko‘rish imkoniyati.
+8.  **Natijalarni Saqlash:** Foydalanuvchining bajargan ishlarini qurilmada saqlash va keyinchalik ko‘rib chiqish imkoniyati.
+9.  **Xatolar Ustida Ishlash (kelajakdagi rivojlanish):** Har bir xato turi bo‘yicha qisqacha qoida yoki tushuntirish berish.
+
+## 4. Loyihaning Afzalliklari
+
+*   **Interaktivlik:** Diktant yozish jarayonini qiziqarli va samarali qiladi.
+*   **Tezkor Fikr-mulohaza:** Foydalanuvchi o‘z xatolarini darhol ko‘rishi va tahlil qilishi mumkin.
+*   **Moslashuvchanlik:** Turli yosh va bilim darajasidagi foydalanuvchilar uchun mos diktantlar.
+*   **Ko‘p Platformalilik:** Flutter yordamida keng foydalanuvchilar ommasini qamrab olish.
+*   **Mahalliy Saqlash:** Internetga ulanmagan holda ham oldingi natijalarni ko‘rish imkoniyati.
+
+## 5. Kelajakdagi Rivojlanish Rejalari
+
+*   Foydalanuvchilar uchun shaxsiy kabinet va bulutli sinxronizatsiya.
+*   Diktantlar bazasini kengaytirish va murakkablik darajalarini qo‘shish.
+*   Xato turlari bo‘yicha o‘quv materiallari va mashqlar integratsiyasi.
+*   Gamifikatsiya elementlarini qo‘shish (yutuqlar, reytinglar).
+*   O‘qituvchilar uchun o‘quvchilar natijalarini kuzatish imkoniyatini yaratish (agar kerak bo‘lsa).
+*   Uslubiy va murakkab grammatik xatolarni aniqlash algoritmlarini takomillashtirish.
+
+
+
+
+
 
 # Diktant Baholash Tizimi: `DiktantEvaluator` Klassi Tahlili
 
