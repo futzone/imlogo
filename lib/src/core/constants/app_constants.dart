@@ -8,6 +8,6 @@ class AppConstants {
   static Future<void> launchAppFor(platform) async {}
 
   static const String aboutText =
-      "Loyiha, Alisher Navoiy nomidagi Toshkent davlat o'zbek tili va adabiyoti universiteti, «Kompyuter lingvistikasi» fakulteti bitiruvchi kurs talabasi Abdumalikova Gulshoda tomonidan bitiruv malakaviy topshiriq ishi sifatida tayyorlandi.";
+      "Loyiha, Alisher Navoiy nomidagi Toshkent davlat o'zbek tili va adabiyoti universiteti, «Kompyuter lingvistikasi» yo'nalishi bitiruvchi kurs talabasi Abdumalikova Gulshoda tomonidan bitiruv malakaviy topshiriq ishi sifatida tayyorlandi.";
 
 }
