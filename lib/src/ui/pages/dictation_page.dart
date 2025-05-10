@@ -70,6 +70,9 @@ class _DictationPageState extends ConsumerState<DictationPage> {
   @override
   void initState() {
     super.initState();
+    setState(() {
+      _time = widget.model.time*60;
+    });
     _startPlayAudio();
   }
 

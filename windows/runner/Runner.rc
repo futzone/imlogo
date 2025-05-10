@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dictation.nutqify.uz" "\0"
-            VALUE "FileDescription", "dication" "\0"
+            VALUE "CompanyName", "Imlogo" "\0"
+            VALUE "FileDescription", "Imlogo" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "dication" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 dictation.nutqify.uz. All rights reserved." "\0"
+            VALUE "InternalName", "Imlogo" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 Imlogo.UZ" "\0"
             VALUE "OriginalFilename", "dication.exe" "\0"
-            VALUE "ProductName", "dication" "\0"
+            VALUE "ProductName", "Imlogo" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -173,7 +173,7 @@ class _DictationResultPageState extends ConsumerState<DictationResultPage> {
                     ),
                     Row(
                       children: [
-                        Text("Nima xatolik: ", style: TextStyle(fontFamily: regularFamily)),
+                        Text("Xatolik: ", style: TextStyle(fontFamily: regularFamily)),
                         Text(item.description, style: TextStyle(fontFamily: boldFamily)),
                       ],
                     ),

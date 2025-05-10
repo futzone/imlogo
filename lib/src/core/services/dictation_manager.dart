@@ -1,7 +1,7 @@
 import 'dart:math';
 
-import '../models/detected_error.dart';
-import '../models/error_type.dart';
+import 'package:dication/src/core/models/detected_error.dart';
+import 'package:dication/src/core/models/error_type.dart';
 
 enum AlignedPairType { MATCH, SUBSTITUTION, DELETION, INSERTION }
 
@@ -29,9 +29,10 @@ class DiktantEvaluator {
   };
 
   static const double DISSIMILARITY_LENGTH_RATIO_THRESHOLD = 0.3;
-  static const int DISSIMILARITY_MIN_USER_TOKENS = 3; // Agar user tokenlari bundan kam bo'lsa, length_ratio ga qaramasdan tekshiriladi
+  static const int DISSIMILARITY_MIN_USER_TOKENS_FOR_RATIO_CHECK = 3;
   static const double DISSIMILARITY_MATCH_RATIO_THRESHOLD = 0.1;
-  static const int CATASTROPHIC_MIN_ORIGINAL_TOKENS = 5; // Agar original tokenlar bundan kam bo'lsa, katastrofik deb topilmaydi
+  static const int CATASTROPHIC_MIN_ORIGINAL_TOKENS_FOR_GIBBERISH_CHECK = 5;
+  static const int SIGNIFICANT_MISSING_WORDS_THRESHOLD = 5; // 5 va undan ko'p so'z tushib qolsa
 
   DiktantEvaluator({
     required this.originalText,
@@ -40,20 +41,16 @@ class DiktantEvaluator {
 
   List<String> _tokenize(String text) {
     if (text.trim().isEmpty) return [];
-
     String textToTokenize = text.split('').map(_normalizeChar).join('');
-
     List<String> tokens = [];
     final RegExp lexerRule = RegExp(
         r"""([a-zA-Zа-яА-ЯўЎғҒҳҲқҚчЧшШo‘O‘g‘G‘]+(?:['’‘ʻ][a-zA-Zа-яА-ЯўЎғҒҳҲқҚчЧшШo‘O‘g‘G‘]+)*[a-zA-Zа-яА-ЯўЎғҒҳҲқҚчЧшШo‘O‘g‘G‘]*)|([.,;:!?()\[\]{}<>"\-'`‘’“”«»~@#$%^&*_\-+=\|\/\\]+)""");
-
     lexerRule.allMatches(textToTokenize).forEach((match) {
       String? matchedToken = match.group(1) ?? match.group(2);
       if (matchedToken != null && matchedToken.isNotEmpty) {
         tokens.add(matchedToken);
       }
     });
-
     if (tokens.isEmpty && textToTokenize.isNotEmpty) {
       return textToTokenize.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
     }
@@ -64,12 +61,10 @@ class DiktantEvaluator {
     String normalized = char;
     normalized = normalized.replaceAll(RegExp(r'[‘’ʻ]'), "'");
     normalized = normalized.replaceAll(RegExp(r'[“”«»]'), '"');
-
     if (normalized == 'ў') return 'o‘';
     if (normalized == 'Ў') return 'O‘';
     if (normalized == 'ғ') return 'g‘';
     if (normalized == 'Ғ') return 'G‘';
-
     return normalized;
   }
 
@@ -87,7 +82,6 @@ class DiktantEvaluator {
     final int n = originalTokens.length;
     final int m = userTokens.length;
     List<List<int>> dp = List.generate(n + 1, (_) => List.filled(m + 1, 0));
-
     for (int i = 0; i <= n; i++) dp[i][0] = i;
     for (int j = 0; j <= m; j++) dp[0][j] = j;
 
@@ -95,7 +89,6 @@ class DiktantEvaluator {
       for (int j = 1; j <= m; j++) {
         int substitutionCost = (_normalizeTokenForComparison(originalTokens[i - 1]) == _normalizeTokenForComparison(userTokens[j - 1])) ? 0 : 1;
         if (originalTokens[i - 1] == userTokens[j - 1]) substitutionCost = 0;
-
         dp[i][j] = min(dp[i - 1][j] + 1, min(dp[i][j - 1] + 1, dp[i - 1][j - 1] + substitutionCost));
       }
     }
@@ -105,17 +98,13 @@ class DiktantEvaluator {
     while (i > 0 || j > 0) {
       String? currentOrig = i > 0 ? originalTokens[i - 1] : null;
       String? currentUser = j > 0 ? userTokens[j - 1] : null;
-
       int substitutionCost = 1;
       if (i > 0 && j > 0) {
         substitutionCost = (_normalizeTokenForComparison(currentOrig!) == _normalizeTokenForComparison(currentUser!)) ? 0 : 1;
         if (currentOrig == currentUser) substitutionCost = 0;
       }
-
       if (i > 0 && j > 0 && dp[i][j] == dp[i - 1][j - 1] + substitutionCost) {
-        aligned.add(AlignedPair(
-            originalToken: currentOrig, userToken: currentUser,
-            type: substitutionCost == 0 ? AlignedPairType.MATCH : AlignedPairType.SUBSTITUTION));
+        aligned.add(AlignedPair(originalToken: currentOrig, userToken: currentUser, type: substitutionCost == 0 ? AlignedPairType.MATCH : AlignedPairType.SUBSTITUTION));
         i--; j--;
       } else if (j > 0 && dp[i][j] == dp[i][j - 1] + 1) {
         aligned.add(AlignedPair(originalToken: null, userToken: currentUser, type: AlignedPairType.INSERTION));
@@ -124,14 +113,10 @@ class DiktantEvaluator {
         aligned.add(AlignedPair(originalToken: currentOrig, userToken: null, type: AlignedPairType.DELETION));
         i--;
       } else {
-        if (i > 0 && j > 0) {
-          aligned.add(AlignedPair(originalToken: currentOrig, userToken: currentUser, type: AlignedPairType.SUBSTITUTION));
-          i--; j--;
-        } else if (i > 0) {
-          aligned.add(AlignedPair(originalToken: currentOrig, userToken: null, type: AlignedPairType.DELETION)); i--;
-        } else if (j > 0) {
-          aligned.add(AlignedPair(originalToken: null, userToken: currentUser, type: AlignedPairType.INSERTION)); j--;
-        } else { break; }
+        if (i > 0 && j > 0) { aligned.add(AlignedPair(originalToken: currentOrig, userToken: currentUser, type: AlignedPairType.SUBSTITUTION)); i--; j--; }
+        else if (i > 0) { aligned.add(AlignedPair(originalToken: currentOrig, userToken: null, type: AlignedPairType.DELETION)); i--; }
+        else if (j > 0) { aligned.add(AlignedPair(originalToken: null, userToken: currentUser, type: AlignedPairType.INSERTION)); j--; }
+        else { break; }
       }
     }
     return aligned.reversed.toList();
@@ -151,7 +136,6 @@ class DiktantEvaluator {
     if (userWords.contains("abzal") && originalText.contains("afzal")) {
       _addError(DetectedError(type: ErrorType.USLUBIY, description: 'Paronimik xato (abzal/afzal)', originalFragment: "afzal", userFragment: "abzal", specificRuleCode: 'uslubiy_paronim_abzal_afzal'));
     }
-
     List<AlignedPair> tempAlignedForUslubiy = _alignTokens(_tokenize(originalText), _tokenize(userText));
     for (final pair in tempAlignedForUslubiy) {
       if (pair.type == AlignedPairType.SUBSTITUTION || pair.type == AlignedPairType.MATCH) {
@@ -176,7 +160,6 @@ class DiktantEvaluator {
     List<String> userTokens = _tokenize(userText);
 
     if (originalTokens.isEmpty && userTokens.isEmpty) return;
-
     if (originalTokens.isEmpty) {
       userTokens.forEach((userToken) {
         _addError(DetectedError(type: _isPunctuation(userToken) ? ErrorType.PUNKTUATSION : ErrorType.IMLO, description: _isPunctuation(userToken) ? 'Ortiqcha tinish belgisi (original bo\'sh)' : 'Ortiqcha so\'z (original bo\'sh)', originalFragment: '', userFragment: userToken, specificRuleCode: _isPunctuation(userToken) ? 'punkt_ortiqcha_umumiy' : 'imlo_ortiqcha_soz_umumiy'));
@@ -195,6 +178,10 @@ class DiktantEvaluator {
           }
         }
       }
+      // Agar barcha so'zlar tushib qolgan bo'lsa, bu ham katta xato
+      if (originalTokens.where((t) => !_isPunctuation(t)).length >= SIGNIFICANT_MISSING_WORDS_THRESHOLD) {
+        _addError(DetectedError(type: ErrorType.IMLO, description: 'Matnning katta qismi yozilmagan (foydalanuvchi matni bo\'sh)', originalFragment: originalText, userFragment: '', specificRuleCode: 'imlo_katta_hajm_tushibqolgan'));
+      }
       return;
     }
 
@@ -202,16 +189,10 @@ class DiktantEvaluator {
     int matchCount = alignedList.where((p) => p.type == AlignedPairType.MATCH).length;
     double matchRatio = originalTokens.isNotEmpty ? matchCount / originalTokens.length : 0.0;
 
-    bool isDissimilarGibberish = userTokens.length == 1 &&
-        !_isPunctuation(userTokens.first) &&
-        originalTokens.length > CATASTROPHIC_MIN_ORIGINAL_TOKENS &&
-        matchRatio < DISSIMILARITY_MATCH_RATIO_THRESHOLD;
+    bool isDissimilarGibberish = userTokens.length == 1 && !_isPunctuation(userTokens.first) && originalTokens.length > CATASTROPHIC_MIN_ORIGINAL_TOKENS_FOR_GIBBERISH_CHECK && matchRatio < DISSIMILARITY_MATCH_RATIO_THRESHOLD;
+    bool isGenerallyDissimilar = userTokens.length <= DISSIMILARITY_MIN_USER_TOKENS_FOR_RATIO_CHECK && (userTokens.length < originalTokens.length * DISSIMILARITY_LENGTH_RATIO_THRESHOLD || matchRatio < DISSIMILARITY_MATCH_RATIO_THRESHOLD);
 
-    bool isGenerallyDissimilar = userTokens.length <= DISSIMILARITY_MIN_USER_TOKENS &&
-        (userTokens.length < originalTokens.length * DISSIMILARITY_LENGTH_RATIO_THRESHOLD || matchRatio < DISSIMILARITY_MATCH_RATIO_THRESHOLD);
-
-
-    if (isDissimilarGibberish || (isGenerallyDissimilar && userTokens.length < originalTokens.length * 0.5 && matchCount < 2) ) { // Stricter condition for general dissimilarity
+    if (isDissimilarGibberish || (isGenerallyDissimilar && userTokens.length < originalTokens.length * 0.5 && matchCount < 2)) {
       _addError(DetectedError(type: ErrorType.IMLO, description: 'Matn originalga umuman mos kelmaydi', originalFragment: originalTokens.take(5).join(" ") + "...", userFragment: userTokens.join(" "), specificRuleCode: 'imlo_katastrofik_nomuvofiqlik'));
       originalTokens.where(_isPunctuation).forEach((p) {
         _addError(DetectedError(type: ErrorType.PUNKTUATSION, description: "Tinish belgisi tushib qolgan (katastrofik nomuvofiqlik)", originalFragment: p, userFragment: "", specificRuleCode: "punkt_tushibqolgan_katastrofik"));
@@ -229,7 +210,11 @@ class DiktantEvaluator {
 
       if (pair.type == AlignedPairType.MATCH || pair.type == AlignedPairType.SUBSTITUTION) {
         if (deletedWordBuffer.isNotEmpty) {
-          _addError(DetectedError(type: ErrorType.IMLO, description: 'So\'z(lar) tushib qolgan', originalFragment: deletedWordBuffer.join(' '), userFragment: '', specificRuleCode: 'imlo_tushibqolgan_guruh'));
+          if (deletedWordBuffer.length >= SIGNIFICANT_MISSING_WORDS_THRESHOLD) {
+            _addError(DetectedError(type: ErrorType.IMLO, description: 'Matnning katta qismi yozilmagan (ko\'p so\'z tushib qolgan)', originalFragment: deletedWordBuffer.join(' '), userFragment: '', specificRuleCode: 'imlo_katta_hajm_tushibqolgan'));
+          } else {
+            _addError(DetectedError(type: ErrorType.IMLO, description: 'So\'z(lar) tushib qolgan', originalFragment: deletedWordBuffer.join(' '), userFragment: '', specificRuleCode: 'imlo_tushibqolgan_guruh'));
+          }
           deletedWordBuffer.clear();
         }
         if (insertedWordBuffer.isNotEmpty) {
@@ -262,15 +247,17 @@ class DiktantEvaluator {
           }
           if (originalToken != userToken && !_isPunctuation(originalToken) && !_isPunctuation(userToken)) {
             bool graphicErrorFound = false;
-            if ((originalToken.contains('o‘') || originalToken.contains('O‘')) && (userToken.contains("o'") || userToken.contains("O'"))) {
-              if (_normalizeTokenForComparison(originalToken.replaceAll(RegExp("[oO](?:‘|ʻ)"), "o'")) == _normalizeTokenForComparison(userToken)) {
-                _addError(DetectedError(type: ErrorType.GRAFIK, description: "O‘ harfi o'rniga o' ishlatilgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_o_apostrof"));
+            String normOrigOriginalCaseMatch = originalToken.split('').map(_normalizeChar).join('');
+            String normUserOriginalCaseMatch = userToken.split('').map(_normalizeChar).join('');
+            if ((normOrigOriginalCaseMatch.contains('o‘') || normOrigOriginalCaseMatch.contains('O‘')) && (normUserOriginalCaseMatch.contains("o'") || normUserOriginalCaseMatch.contains("O'"))) {
+              if (normOrigOriginalCaseMatch.replaceAll('o‘', "o'").replaceAll('O‘', "O'") == normUserOriginalCaseMatch) {
+                _addError(DetectedError(type: ErrorType.GRAFIK, description: "O‘ harfi o'rniga o' ishlatilgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_o_apostrof_ornida"));
                 graphicErrorFound = true;
               }
             }
-            if (!graphicErrorFound && (originalToken.contains('g‘') || originalToken.contains('G‘')) && (userToken.contains("g'") || userToken.contains("G'"))) {
-              if (_normalizeTokenForComparison(originalToken.replaceAll(RegExp("[gG](?:‘|ʻ)"), "g'")) == _normalizeTokenForComparison(userToken)) {
-                _addError(DetectedError(type: ErrorType.GRAFIK, description: "G‘ harfi o'rniga g' ishlatilgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_g_apostrof"));
+            if (!graphicErrorFound && (normOrigOriginalCaseMatch.contains('g‘') || normOrigOriginalCaseMatch.contains('G‘')) && (normUserOriginalCaseMatch.contains("g'") || normUserOriginalCaseMatch.contains("G'"))) {
+              if (normOrigOriginalCaseMatch.replaceAll('g‘', "g'").replaceAll('G‘', "G'") == normUserOriginalCaseMatch) {
+                _addError(DetectedError(type: ErrorType.GRAFIK, description: "G‘ harfi o'rniga g' ishlatilgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_g_apostrof_ornida"));
                 graphicErrorFound = true;
               }
             }
@@ -289,33 +276,41 @@ class DiktantEvaluator {
             _addError(DetectedError(type: ErrorType.IMLO, description: origIsPunct ? 'Tinish belgisi o\'rniga so\'z yozilgan' : 'So\'z o\'rniga tinish belgisi yozilgan', originalFragment: originalToken, userFragment: userToken, specificRuleCode: 'imlo_soz_va_punkt_almashuvi_umumiy'));
           } else {
             bool errorProcessed = false;
-            if ((originalToken.contains('o‘') || originalToken.contains('O‘')) && (userToken.contains("o'") || userToken.contains("O'"))) {
-              if (_normalizeTokenForComparison(originalToken.replaceAll(RegExp("[oO](?:‘|ʻ)"), "o'")) == _normalizeTokenForComparison(userToken)) {
-                _addError(DetectedError(type: ErrorType.GRAFIK, description: "O‘ harfi o'rniga o' ishlatilgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_o_apostrof"));
-                errorProcessed = true;
-              }
+            String normOrigOriginalCase = originalToken.split('').map(_normalizeChar).join('');
+            String normUserOriginalCase = userToken.split('').map(_normalizeChar).join('');
+            String normOrig = normOrigOriginalCase.toLowerCase();
+            String normUser = normUserOriginalCase.toLowerCase();
+
+            bool specificGraphicErrorFound = false;
+            if ((normOrigOriginalCase.contains('o‘') || normOrigOriginalCase.contains('O‘')) && !(normUserOriginalCase.contains('o‘') || normUserOriginalCase.contains('O‘') || normUserOriginalCase.contains("o'") || normUserOriginalCase.contains("O'")) && (normOrigOriginalCase.replaceAll('o‘', 'o').replaceAll('O‘', 'O') == normUserOriginalCase) ) {
+              _addError(DetectedError(type: ErrorType.GRAFIK, description: "o‘ harfidagi belgi tushib qolgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_o_belgi_tushgan"));
+              errorProcessed = true; specificGraphicErrorFound = true;
             }
-            if (!errorProcessed && (originalToken.contains('g‘') || originalToken.contains('G‘')) && (userToken.contains("g'") || userToken.contains("G'"))) {
-              if (_normalizeTokenForComparison(originalToken.replaceAll(RegExp("[gG](?:‘|ʻ)"), "g'")) == _normalizeTokenForComparison(userToken)) {
-                _addError(DetectedError(type: ErrorType.GRAFIK, description: "G‘ harfi o'rniga g' ishlatilgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_g_apostrof"));
-                errorProcessed = true;
-              }
+            if (!specificGraphicErrorFound && (normOrigOriginalCase.contains('g‘') || normOrigOriginalCase.contains('G‘')) && !(normUserOriginalCase.contains('g‘') || normUserOriginalCase.contains('G‘') || normUserOriginalCase.contains("g'") || normUserOriginalCase.contains("G'")) &&(normOrigOriginalCase.replaceAll('g‘', 'g').replaceAll('G‘', 'G') == normUserOriginalCase) ) {
+              _addError(DetectedError(type: ErrorType.GRAFIK, description: "g‘ harfidagi belgi tushib qolgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_g_belgi_tushgan"));
+              errorProcessed = true; specificGraphicErrorFound = true;
+            }
+            if (!specificGraphicErrorFound && (normOrigOriginalCase.contains('o‘') || normOrigOriginalCase.contains('O‘')) && (normUserOriginalCase.contains("o'") || normUserOriginalCase.contains("O'")) && (normOrigOriginalCase.replaceAll('o‘', "o'").replaceAll('O‘', "O'") == normUserOriginalCase) ) {
+              _addError(DetectedError(type: ErrorType.GRAFIK, description: "o‘ harfi o'rniga o' ishlatilgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_o_apostrof_ornida"));
+              errorProcessed = true; specificGraphicErrorFound = true;
+            }
+            if (!specificGraphicErrorFound && (normOrigOriginalCase.contains('g‘') || normOrigOriginalCase.contains('G‘')) && (normUserOriginalCase.contains("g'") || normUserOriginalCase.contains("G'")) && (normOrigOriginalCase.replaceAll('g‘', "g'").replaceAll('G‘', "G'") == normUserOriginalCase) ) {
+              _addError(DetectedError(type: ErrorType.GRAFIK, description: "g‘ harfi o'rniga g' ishlatilgan", originalFragment: originalToken, userFragment: userToken, specificRuleCode: "grafik_g_apostrof_ornida"));
+              errorProcessed = true; specificGraphicErrorFound = true;
             }
             if (errorProcessed) break;
 
-            if (originalToken.toLowerCase() == userToken.toLowerCase() && originalToken != userToken) {
+            if (normOrig == normUser && originalToken.toLowerCase() == userToken.toLowerCase() && originalToken != userToken) {
               _addError(DetectedError(type: ErrorType.IMLO, description: 'Bosh harf imlosida xato', originalFragment: originalToken, userFragment: userToken, specificRuleCode: 'imlo_bosh_harf_umumiy'));
               errorProcessed = true;
             }
+            if (normOrig == normUser && errorProcessed) break;
 
-            if (!errorProcessed) {
+            if (!errorProcessed || (errorProcessed && normOrig != normUser)) {
               double penaltyMultiplier = 1.0;
               String errorDesc = 'So\'zni noto\'g\'ri yozish';
-              String specificCode = 'imlo_soz_almashtirish_${_normalizeTokenForComparison(originalToken)}_vs_${_normalizeTokenForComparison(userToken)}';
+              String specificCode = 'imlo_soz_almashtirish_${normOrig}_vs_${normUser}';
               final Map<String, List<String>> adjacentKeys = { 'z': ['x', 's', 'a'], 'x': ['z', 'c', 's', 'd'], 's':['a','d','x','w'],};
-
-              String normOrig = _normalizeTokenForComparison(originalToken);
-              String normUser = _normalizeTokenForComparison(userToken);
 
               if (normOrig.length == normUser.length) {
                 int diffs = 0; String? dO, dU;
@@ -334,14 +329,18 @@ class DiktantEvaluator {
                 errorDesc = 'x o\'rniga h yozilgan'; specificCode = 'imlo_h_x_almashinuvi';
               }
 
-              String origWithoutTutuq = normOrig.replaceAll(RegExp("['ʼ‘’]"), "");
-              String userWithoutTutuq = normUser.replaceAll(RegExp("['ʼ‘’]"), "");
-              if (origWithoutTutuq == userWithoutTutuq) {
-                if (normOrig.contains(RegExp("['ʼ‘’]")) && !normUser.contains(RegExp("['ʼ‘’]"))) {
-                  errorDesc = 'Tutuq belgisi tushib qolgan'; specificCode = 'imlo_tutuq_tushibqolgan_umumiy';
-                } else if (!normOrig.contains(RegExp("['ʼ‘’]")) && normUser.contains(RegExp("['ʼ‘’]"))) {
-                  errorDesc = 'O\'rinsiz tutuq belgisi ishlatilgan'; specificCode = 'imlo_tutuq_orinsiz_umumiy';
-                }
+              String tempOrigBase = normOrig.replaceAll("o'", "o##").replaceAll("g'", "g##");
+              String tempUserBase = normUser.replaceAll("o'", "o##").replaceAll("g'", "g##");
+              bool origHasActualApostrophe = tempOrigBase.contains("'");
+              bool userHasActualApostrophe = tempUserBase.contains("'");
+              String origBaseForTutuq = tempOrigBase.replaceAll("'", "");
+              String userBaseForTutuq = tempUserBase.replaceAll("'", "");
+              origBaseForTutuq = origBaseForTutuq.replaceAll("o##", "o'").replaceAll("g##", "g'");
+              userBaseForTutuq = userBaseForTutuq.replaceAll("o##", "o'").replaceAll("g##", "g'");
+
+              if (origBaseForTutuq == userBaseForTutuq) {
+                if (origHasActualApostrophe && !userHasActualApostrophe) { errorDesc = 'Haqiqiy tutuq belgisi tushib qolgan'; specificCode = 'imlo_haqiqiy_tutuq_tushibqolgan';}
+                else if (!origHasActualApostrophe && userHasActualApostrophe) { errorDesc = 'O\'rinsiz haqiqiy tutuq belgisi ishlatilgan'; specificCode = 'imlo_haqiqiy_tutuq_orinsiz';}
               }
               _addError(DetectedError(type: ErrorType.IMLO, description: errorDesc, originalFragment: originalToken, userFragment: userToken, specificRuleCode: specificCode, penaltyMultiplier: penaltyMultiplier));
             }
@@ -350,7 +349,11 @@ class DiktantEvaluator {
       }
     }
     if (deletedWordBuffer.isNotEmpty) {
-      _addError(DetectedError(type: ErrorType.IMLO, description: 'So\'z(lar) tushib qolgan', originalFragment: deletedWordBuffer.join(' '), userFragment: '', specificRuleCode: 'imlo_tushibqolgan_guruh'));
+      if (deletedWordBuffer.length >= SIGNIFICANT_MISSING_WORDS_THRESHOLD) {
+        _addError(DetectedError(type: ErrorType.IMLO, description: 'Matnning katta qismi yozilmagan (ko\'p so\'z tushib qolgan)', originalFragment: deletedWordBuffer.join(' '), userFragment: '', specificRuleCode: 'imlo_katta_hajm_tushibqolgan'));
+      } else {
+        _addError(DetectedError(type: ErrorType.IMLO, description: 'So\'z(lar) tushib qolgan', originalFragment: deletedWordBuffer.join(' '), userFragment: '', specificRuleCode: 'imlo_tushibqolgan_guruh'));
+      }
     }
     if (insertedWordBuffer.isNotEmpty) {
       _addError(DetectedError(type: ErrorType.IMLO, description: 'Ortiqcha so\'z(lar)', originalFragment: '', userFragment: insertedWordBuffer.join(' '), specificRuleCode: 'imlo_ortiqcha_guruh'));
@@ -364,19 +367,17 @@ class DiktantEvaluator {
   int get grafikErrorCount => _uniqueErrorCodes[ErrorType.GRAFIK]?.length ?? 0;
 
   int _calculate5PointInternal(int imloErrors, int punktErrors, int uslubiyErrors, int grafikErrors, int changesCount) {
-    if (_uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katastrofik_nomuvofiqlik')) return 1;
-
+    if (_uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katastrofik_nomuvofiqlik') ||
+        _uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katta_hajm_tushibqolgan') ||
+        _uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_barcha_soz_tushibqolgan')) {
+      return 1;
+    }
     if (imloErrors == 0 && punktErrors == 0 && uslubiyErrors == 0 && grafikErrors == 0) {
-      if (changesCount >= 3) return 4;
-      return 5;
+      if (changesCount >= 3) return 4; return 5;
     }
     if ((imloErrors == 1 && punktErrors == 0 && uslubiyErrors == 0 && grafikErrors == 0) || (imloErrors == 0 && punktErrors == 1 && uslubiyErrors == 0 && grafikErrors == 0)) {
-      // Qoidada faqat imlo va punktuatsiya deyilgan "bitta xato" uchun.
-      // "qo'pol bo'lmagan bitta imlo YOKI bitta punktuatsion xatosi bo'lgan"
-      if (changesCount >= 3) return 4;
-      return 5;
+      if (changesCount >= 3) return 4; return 5;
     }
-
     int ishoratErrors = punktErrors + uslubiyErrors + grafikErrors;
     if (imloErrors <= 2 && (imloErrors + ishoratErrors) <= 4) return 4;
     if (imloErrors <= 4 && (imloErrors + ishoratErrors) <= 8) return 3;
@@ -391,7 +392,11 @@ class DiktantEvaluator {
   }
 
   int evaluate100PointScaleMethod2() {
-    if (_uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katastrofik_nomuvofiqlik')) return 0;
+    if (_uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katastrofik_nomuvofiqlik') ||
+        _uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katta_hajm_tushibqolgan') ||
+        _uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_barcha_soz_tushibqolgan')) {
+      return 0;
+    }
     int imlo = imloErrorCount;
     int ishoraviy = punktuatsionErrorCount + uslubiyErrorCount + grafikErrorCount;
     if (imlo >= 10) return 0;
@@ -403,7 +408,11 @@ class DiktantEvaluator {
   }
 
   double evaluate100PointScaleMethod3() {
-    if (_uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katastrofik_nomuvofiqlik')) return 0.0;
+    if (_uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katastrofik_nomuvofiqlik') ||
+        _uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_katta_hajm_tushibqolgan') ||
+        _uniqueErrorCodes[ErrorType.IMLO]!.contains('imlo_barcha_soz_tushibqolgan')) {
+      return 0.0;
+    }
     double score = 100.0;
     for (var error in _detectedErrors) {
       switch (error.type) {
