@@ -9,12 +9,13 @@ import 'package:flutter/material.dart';
 
 class MainCard extends StatelessWidget {
   final TextModel text;
+  final bool issDone;
 
-  const MainCard({super.key, required this.text});
+  const MainCard({super.key, required this.text, required this.issDone});
 
   @override
   Widget build(BuildContext context) {
-    final issDone = Random().nextBool();
+    // final issDone = Random().nextBool();
     return HoveredWidget(
       onPressed: () => BeforeStartScreen.show(context, text),
       builder: (focused) => AnimatedContainer(

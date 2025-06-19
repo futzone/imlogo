@@ -71,7 +71,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
   void initState() {
     super.initState();
     setState(() {
-      _time = widget.model.time*60;
+      _time = widget.model.time * 60;
     });
     _startPlayAudio();
   }
@@ -94,8 +94,8 @@ class _DictationPageState extends ConsumerState<DictationPage> {
 
     evaluator1.analyze();
     Work work = Work(
-      id: '',
-      createdDate: '',
+      id: widget.model.id,
+      createdDate: DateTime.now().toIso8601String(),
       ball: evaluator1.evaluate100PointScaleMethod3(),
       baho: evaluator1.evaluate5PointScale().toDouble(),
       errors: evaluator1.getDetailedErrors(),
@@ -125,7 +125,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
         title: Text(widget.model.title),
         actions: [
           CountdownTimer(
-            seconds: widget.model.time,
+            seconds: widget.model.time * 60,
             onUpdateTime: (int time) {
               setState(() {
                 _time = time;
@@ -176,6 +176,56 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                             fontSize: 18,
                             fontFamily: mediumFamily,
                             color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(),
+                        SimpleButton(
+                          onPressed: () async {
+                            final playbackRate = _player.playbackRate;
+
+                            if (playbackRate != 1.0) {
+                              await _player.setPlaybackRate(1.0);
+                            } else {
+                              await _player.setPlaybackRate(0.5);
+                            }
+                          },
+                          child: SizedBox(
+                            height: 36,
+                            width: 36,
+                            child: Stack(
+                              children: [
+                                Center(
+                                  child: Icon(
+                                    Icons.speed_outlined,
+                                    size: 32,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  child: Container(
+                                    padding: EdgeInsets.only(
+                                      left: 2,
+                                      right: 2,
+                                      top: 2,
+                                      bottom: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(4),
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                    child: Text(
+                                      "0.5x",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontFamily: boldFamily,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              ],
+                            ),
                           ),
                         ),
                         SizedBox(),

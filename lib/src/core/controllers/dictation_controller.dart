@@ -21,7 +21,7 @@ class DictationController {
 
   void onCreate(Work work, DiktantEvaluator evaluator) async {
     final box = await Hive.openBox(_boxName);
-    work.id = "${DateTime.now().millisecondsSinceEpoch}";
+    // work.id = "${DateTime.now().millisecondsSinceEpoch}";
     work.createdDate = DateTime.now().toIso8601String();
     await box.put(work.id, jsonEncode(work.toJson())).then((_) {
       ref.invalidate(historyProvider);
