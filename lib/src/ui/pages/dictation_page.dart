@@ -84,7 +84,8 @@ class _DictationPageState extends ConsumerState<DictationPage> {
   }
 
   void _completeDictation() {
-    DictationController dictationController = DictationController(context: context, ref: ref);
+    DictationController dictationController =
+        DictationController(context: context, ref: ref);
     dictationController.showLoading();
 
     var evaluator1 = DiktantEvaluator(
@@ -232,7 +233,8 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                         SimpleButton(
                           onPressed: () async {
                             final seconds = (_position.inSeconds - 15);
-                            Duration newPosition = Duration(seconds: seconds <= 0 ? 0 : seconds);
+                            Duration newPosition =
+                                Duration(seconds: seconds <= 0 ? 0 : seconds);
                             await _player.seek(newPosition);
                           },
                           child: SizedBox(
@@ -278,13 +280,17 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                         SimpleButton(
                           onPressed: () async {
                             if (_isPlaying) {
-                              await _player.pause().then((_) => setState(() => _isPlaying = false));
+                              await _player.pause().then(
+                                  (_) => setState(() => _isPlaying = false));
                             } else {
-                              await _player.resume().then((_) => setState(() => _isPlaying = true));
+                              await _player.resume().then(
+                                  (_) => setState(() => _isPlaying = true));
                             }
                           },
                           child: Icon(
-                            _isPlaying ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                            _isPlaying
+                                ? Icons.pause_circle_outline
+                                : Icons.play_circle_outline,
                             size: 32,
                             color: Colors.white,
                           ),
@@ -323,8 +329,59 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                             ),
                             SimpleButton(
                               onPressed: () async {
+                                final playbackRate = _player.playbackRate;
+
+                                if (playbackRate != 1.0) {
+                                  await _player.setPlaybackRate(1.0);
+                                } else {
+                                  await _player.setPlaybackRate(0.5);
+                                }
+                              },
+                              child: SizedBox(
+                                height: 36,
+                                width: 36,
+                                child: Stack(
+                                  children: [
+                                    Center(
+                                      child: Icon(
+                                        Icons.speed_outlined,
+                                        size: 32,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      child: Container(
+                                        padding: EdgeInsets.only(
+                                          left: 2,
+                                          right: 2,
+                                          top: 2,
+                                          bottom: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          color: Theme.of(context).primaryColor,
+                                        ),
+                                        child: Text(
+                                          "0.5x",
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontFamily: boldFamily,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SimpleButton(
+                              onPressed: () async {
                                 final seconds = (_position.inSeconds - 15);
-                                Duration newPosition = Duration(seconds: seconds <= 0 ? 0 : seconds);
+                                Duration newPosition = Duration(
+                                    seconds: seconds <= 0 ? 0 : seconds);
                                 await _player.seek(newPosition);
                               },
                               child: SizedBox(
@@ -349,7 +406,8 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                                           bottom: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                           color: Theme.of(context).primaryColor,
                                         ),
                                         child: Text(
@@ -369,13 +427,17 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                             SimpleButton(
                               onPressed: () async {
                                 if (_isPlaying) {
-                                  await _player.pause().then((_) => setState(() => _isPlaying = false));
+                                  await _player.pause().then((_) =>
+                                      setState(() => _isPlaying = false));
                                 } else {
-                                  await _player.resume().then((_) => setState(() => _isPlaying = true));
+                                  await _player.resume().then(
+                                      (_) => setState(() => _isPlaying = true));
                                 }
                               },
                               child: Icon(
-                                _isPlaying ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                                _isPlaying
+                                    ? Icons.pause_circle_outline
+                                    : Icons.play_circle_outline,
                                 size: 32,
                                 color: Colors.white,
                               ),
@@ -430,7 +492,9 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                     },
                     child: Container(
                       margin: EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(48), border: Border.all(color: Colors.red)),
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(48),
+                          border: Border.all(color: Colors.red)),
                       padding: EdgeInsets.only(
                         left: 32,
                         right: 32,
@@ -517,7 +581,9 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                       },
                       child: Container(
                         margin: EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(48), border: Border.all(color: Colors.red)),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(48),
+                            border: Border.all(color: Colors.red)),
                         padding: EdgeInsets.only(
                           left: 32,
                           right: 32,

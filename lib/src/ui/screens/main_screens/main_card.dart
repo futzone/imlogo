@@ -24,7 +24,9 @@ class MainCard extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          color: focused ? Theme.of(context).primaryColor.withValues(alpha: 0.2) : Theme.of(context).cardColor,
+          color: focused
+              ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
+              : Theme.of(context).cardColor,
           boxShadow: focused
               ? [
                   BoxShadow(
@@ -80,27 +82,33 @@ class MainCard extends StatelessWidget {
                             Row(
                               children: [
                                 Icon(Icons.timelapse_outlined, size: 20),
-                                Text(
-                                  "Davomiyligi: ${text.time} min",
-                                  style: TextStyle(fontFamily: mediumFamily),
+                                Expanded(
+                                  child: Text(
+                                    "Davomiyligi: ${text.time} min",
+                                    style: TextStyle(fontFamily: mediumFamily),
+                                  ),
                                 ),
                               ],
                             ),
                             Row(
                               children: [
                                 Icon(Icons.text_fields, size: 20),
-                                Text(
-                                  "So'zlar soni: ${text.length} ta",
-                                  style: TextStyle(fontFamily: mediumFamily),
+                                Expanded(
+                                  child: Text(
+                                    "So'zlar soni: ${text.length} ta",
+                                    style: TextStyle(fontFamily: mediumFamily),
+                                  ),
                                 ),
                               ],
                             ),
                             Row(
                               children: [
                                 Icon(Icons.accessibility, size: 20),
-                                Text(
-                                  "Yosh chegarasi: ${text.ageName} yosh, (${text.className})",
-                                  style: TextStyle(fontFamily: mediumFamily),
+                                Expanded(
+                                  child: Text(
+                                    "Yosh chegarasi: ${text.ageName} yosh, (${text.className})",
+                                    style: TextStyle(fontFamily: mediumFamily),
+                                  ),
                                 ),
                               ],
                             ),
