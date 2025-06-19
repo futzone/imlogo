@@ -12,10 +12,12 @@ class DictationResultPage extends ConsumerStatefulWidget {
   final Work work;
   final bool useBack;
 
-  const DictationResultPage({super.key, this.useBack = false, required this.work});
+  const DictationResultPage(
+      {super.key, this.useBack = false, required this.work});
 
   @override
-  ConsumerState<DictationResultPage> createState() => _DictationResultPageState();
+  ConsumerState<DictationResultPage> createState() =>
+      _DictationResultPageState();
 }
 
 class _DictationResultPageState extends ConsumerState<DictationResultPage> {
@@ -154,27 +156,43 @@ class _DictationResultPageState extends ConsumerState<DictationResultPage> {
                   spacing: 4,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Aslida: ", style: TextStyle(fontFamily: regularFamily)),
-                        Text(item.originalFragment, style: TextStyle(fontFamily: boldFamily)),
+                        Text("Aslida: ",
+                            style: TextStyle(fontFamily: regularFamily)),
+                        Expanded(
+                            child: Text(item.originalFragment,
+                                style: TextStyle(fontFamily: boldFamily))),
                       ],
                     ),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Siz kiritgan: ", style: TextStyle(fontFamily: regularFamily)),
-                        Text(item.userFragment, style: TextStyle(fontFamily: boldFamily)),
+                        Text("Siz kiritgan: ",
+                            style: TextStyle(fontFamily: regularFamily)),
+                        Expanded(
+                            child: Text(item.userFragment,
+                                style: TextStyle(fontFamily: boldFamily))),
                       ],
                     ),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Xatolik turi: ", style: TextStyle(fontFamily: regularFamily)),
-                        Text(item.type.toName, style: TextStyle(fontFamily: boldFamily)),
+                        Text("Xatolik turi: ",
+                            style: TextStyle(fontFamily: regularFamily)),
+                        Expanded(
+                            child: Text(item.type.toName,
+                                style: TextStyle(fontFamily: boldFamily))),
                       ],
                     ),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Xatolik: ", style: TextStyle(fontFamily: regularFamily)),
-                        Text(item.description, style: TextStyle(fontFamily: boldFamily)),
+                        Text("Xatolik: ",
+                            style: TextStyle(fontFamily: regularFamily)),
+                        Expanded(
+                            child: Text(item.description,
+                                style: TextStyle(fontFamily: boldFamily))),
                       ],
                     ),
                   ],
@@ -223,7 +241,8 @@ class _DictationResultPageState extends ConsumerState<DictationResultPage> {
             PrimaryButton(
               title: "Bosh sahifaga",
               onTap: () => AppRouter.open(context, MainPage()),
-            )
+            ),
+            SizedBox(height: 16),
           ],
         ),
       ),

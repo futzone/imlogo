@@ -15,40 +15,42 @@ class MainPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    return Scaffold(
-      body: ref.watch(historyProvider).when(
-            error: (_, __) => Text("Xatolik yuz berdi"),
-            loading: () => Center(
-              child: CircularProgressIndicator(),
-            ),
-            data: (history) {
-              log(history.toString());
-              return CustomScrollView(
-                slivers: [
-                  AppBarMain(),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      childCount: list.length,
-                      (context, index) {
-                        final dictItem = list[index];
-                        final isDone = history.where((el) {
-                          log("Checking item: ${el.id} against dictItem: ${dictItem.id}");
-                          return el.id == dictItem.id;
-                        }).isNotEmpty;
-                        log("isDone: $isDone, id: ${dictItem.id}");
+    return SafeArea(
+      child: Scaffold(
+        body: ref.watch(historyProvider).when(
+              error: (_, __) => Text("Xatolik yuz berdi"),
+              loading: () => Center(
+                child: CircularProgressIndicator(),
+              ),
+              data: (history) {
+                log(history.toString());
+                return CustomScrollView(
+                  slivers: [
+                    AppBarMain(),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        childCount: list.length,
+                        (context, index) {
+                          final dictItem = list[index];
+                          final isDone = history.where((el) {
+                            log("Checking item: ${el.id} against dictItem: ${dictItem.id}");
+                            return el.id == dictItem.id;
+                          }).isNotEmpty;
+                          log("isDone: $isDone, id: ${dictItem.id}");
 
-                        return MainCard(
-                          text: dictItem,
-                          issDone: isDone,
-                        );
-                      },
+                          return MainCard(
+                            text: dictItem,
+                            issDone: isDone,
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  SliverPadding(padding: EdgeInsets.all(24)),
-                ],
-              );
-            },
-          ),
+                    SliverPadding(padding: EdgeInsets.all(24)),
+                  ],
+                );
+              },
+            ),
+      ),
     );
   }
 }
