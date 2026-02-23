@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_fonts.dart';
 import 'package:dication/src/core/models/text_model.dart';
@@ -112,6 +110,18 @@ class MainCard extends StatelessWidget {
                                 ),
                               ],
                             ),
+                            if (text.formattedDate.isNotEmpty)
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_today_outlined, size: 20),
+                                  Expanded(
+                                    child: Text(
+                                      "Qo'shilgan vaqti: ${text.formattedDate}",
+                                      style: TextStyle(fontFamily: mediumFamily),
+                                    ),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       if (!context.isMobile)
@@ -137,6 +147,17 @@ class MainCard extends StatelessWidget {
                             Icon(Icons.accessibility, size: 20),
                             Text(
                               "Yosh chegarasi: ${text.ageName} yosh, (${text.className})",
+                              style: TextStyle(fontFamily: mediumFamily),
+                            ),
+                          ],
+                        ),
+                      if (!context.isMobile && text.formattedDate.isNotEmpty)
+                        Row(
+                          spacing: 4,
+                          children: [
+                            Icon(Icons.calendar_today_outlined, size: 20),
+                            Text(
+                              "Qo'shilgan vaqti: ${text.formattedDate}",
                               style: TextStyle(fontFamily: mediumFamily),
                             ),
                           ],

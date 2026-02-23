@@ -1,5 +1,4 @@
 import 'package:dication/src/core/config/app_fonts.dart';
-import 'package:dication/src/core/database/static_database.dart';
 import 'package:dication/src/providers/history_provider.dart';
 import 'package:dication/src/ui/screens/main_screens/result_card.dart';
 import 'package:flutter/material.dart';

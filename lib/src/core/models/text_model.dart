@@ -7,6 +7,7 @@ class TextModel {
   final int length;
   final int time;
   final String? url;
+  final DateTime? createdDate;
 
   TextModel({
     required this.id,
@@ -17,6 +18,7 @@ class TextModel {
     required this.length,
     required this.ageName,
     required this.className,
+    this.createdDate,
   });
 
   factory TextModel.fromJson(map) {
@@ -29,6 +31,9 @@ class TextModel {
       ageName: map['ageName'],
       className: map['className'],
       url: map['url'],
+      createdDate: map['createdDate'] != null
+          ? DateTime.tryParse(map['createdDate'])
+          : null,
     );
   }
 
@@ -37,7 +42,6 @@ class TextModel {
     for (final item in list) {
       kList.add(TextModel.fromJson(item));
     }
-
     return kList;
   }
 
@@ -51,7 +55,18 @@ class TextModel {
       'length': length,
       'time': time,
       'url': url,
+      'createdDate': createdDate?.toIso8601String(),
     };
   }
 
+  String get formattedDate {
+    if (createdDate == null) return '';
+    final d = createdDate!.toLocal();
+    final year = d.year;
+    final month = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    final hour = d.hour.toString().padLeft(2, '0');
+    final minute = d.minute.toString().padLeft(2, '0');
+    return '$year.$month.$day, $hour:$minute';
+  }
 }

@@ -83,6 +83,46 @@ class _DictationPageState extends ConsumerState<DictationPage> {
     super.dispose();
   }
 
+  Future<bool> _showExitWarning() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          "Diktantni bekor qilish",
+          style: TextStyle(fontFamily: boldFamily, fontSize: 18),
+        ),
+        content: Text(
+          "Diktant hali yakunlanmagan. Chiqib ketsangiz, natijalar saqlanmaydi. Chiqishni xohlaysizmi?",
+          style: TextStyle(fontFamily: mediumFamily, fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              "Yo'q, davom etish",
+              style: TextStyle(fontFamily: mediumFamily),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              "Ha, chiqish",
+              style: TextStyle(fontFamily: mediumFamily, color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  void _handleCancel() async {
+    final shouldExit = await _showExitWarning();
+    if (shouldExit && mounted) {
+      AppRouter.close(context);
+    }
+  }
+
   void _completeDictation() {
     DictationController dictationController =
         DictationController(context: context, ref: ref);
@@ -114,7 +154,16 @@ class _DictationPageState extends ConsumerState<DictationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldExit = await _showExitWarning();
+        if (shouldExit && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).primaryColor,
         titleTextStyle: TextStyle(
@@ -487,9 +536,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   SimpleButton(
-                    onPressed: () {
-                      AppRouter.close(context);
-                    },
+                    onPressed: _handleCancel,
                     child: Container(
                       margin: EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
@@ -606,6 +653,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
           ],
         ),
       ),
+    ),
     );
   }
 }
