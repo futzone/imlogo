@@ -4,7 +4,7 @@ class AppConstants {
   static const String androidApp = "";
   static const String iOSApp = "";
   static const String windowsApp = "";
-  static const String telegramChannel = "";
+  static const String telegramChannel = "https://t.me/imlogo";
   static const String website = "";
 
   static Future<void> launchAppFor(platform) async {

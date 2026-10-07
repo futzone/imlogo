@@ -1,4 +1,5 @@
 import 'package:pocketbase/pocketbase.dart';
+import 'package:dication/src/core/constants/app_constants.dart';
 import 'package:dication/src/core/models/app_info_model.dart';
 import 'package:dication/src/core/models/text_model.dart';
 
@@ -50,7 +51,8 @@ class PocketBaseService {
 
     return AppInfoModel(
       about: data['about'] ?? '',
-      telegram: _nonEmpty(data['telegram']),
+      // Kanal manzili serverdagi qiymatga bog'liq emas.
+      telegram: AppConstants.telegramChannel,
       website: _nonEmpty(data['website']),
       github: _nonEmpty(data['github']),
       docs: _nonEmpty(data['docs']),

@@ -23,6 +23,7 @@
 - ✅ **Imlo tekshiruvi** — Avtomatik tarzda imlo xatolar aniqlanadi  
 - 📊 **Natija ko‘rish** — Diktant yakunida baho va xatoliklar ro‘yxati  
 - 📚 **Tarix** — O‘tmishdagi diktantlar natijalarini ko‘rish
+- ⌨️ **Tez yozish** — O‘zbekcha so‘zlarda tez yozish mashqi (WPM, aniqlik, natijalar tarixi). So‘zlar to‘plami: `assets/words/uz.txt`, talablar: [`docs/sozlar-topshiriq.md`](docs/sozlar-topshiriq.md)
 
 ## 📦 Loyihani ishga tushurish
 

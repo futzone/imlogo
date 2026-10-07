@@ -25,18 +25,26 @@ class AudioProgressBar extends StatelessWidget {
         .toDouble()
         .clamp(0.0, maxMilliseconds);
 
-    return Slider(
-      min: 0.0, // Explicitly set min for clarity
-      value: currentMilliseconds,
-      max: maxMilliseconds,
-      onChanged: (value) {
-        // Only trigger onChanged if the duration is valid (greater than 0)
-        if (maxMilliseconds > 0) {
-          onChanged(Duration(milliseconds: value.toInt()));
-        }
-      },
-      activeColor: Colors.blue,
-      inactiveColor: Colors.grey,
+    return SliderTheme(
+      data: SliderTheme.of(context).copyWith(
+        trackHeight: 4,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+      ),
+      child: Slider(
+        min: 0.0, // Explicitly set min for clarity
+        value: currentMilliseconds,
+        max: maxMilliseconds,
+        onChanged: (value) {
+          // Only trigger onChanged if the duration is valid (greater than 0)
+          if (maxMilliseconds > 0) {
+            onChanged(Duration(milliseconds: value.toInt()));
+          }
+        },
+        activeColor: Colors.white,
+        inactiveColor: Colors.white.withValues(alpha: 0.3),
+        thumbColor: Colors.white,
+      ),
     );
   }
 }

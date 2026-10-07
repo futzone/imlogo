@@ -1,86 +1,75 @@
-import 'dart:developer';
-
-import 'package:dication/src/providers/dictation_provider.dart';
-import 'package:dication/src/providers/history_provider.dart';
-import 'package:dication/src/ui/screens/main_screens/app_bar.dart';
-import 'package:dication/src/ui/screens/main_screens/main_card.dart';
+import 'package:dication/src/core/config/app_device.dart';
+import 'package:dication/src/ui/screens/main_screens/app_header.dart';
+import 'package:dication/src/ui/screens/main_screens/dictation_list.dart';
+import 'package:dication/src/ui/screens/typing/typing_view.dart';
+import 'package:dication/src/ui/widgets/app_background.dart';
+import 'package:dication/src/ui/widgets/app_scaffold.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MainPage extends ConsumerWidget {
+/// Bosh sahifa: "Diktant" va "Tez yozish" bo'limlari.
+class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
   @override
-  Widget build(BuildContext context, ref) {
-    final state = ref.watch(dictationProvider);
-    final historyAsync = ref.watch(historyProvider);
+  State<MainPage> createState() => _MainPageState();
+}
 
-    if (state.isInitialLoading) {
-      return SafeArea(
-        child: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
+class _MainPageState extends State<MainPage> {
+  int _index = 0;
 
-    if (state.error != null && state.items.isEmpty) {
-      return SafeArea(
-        child: Scaffold(
-          body: Center(child: Text("Xatolik yuz berdi: ${state.error}")),
-        ),
-      );
-    }
+  void _select(int index) => setState(() => _index = index);
 
-    final list = state.items;
-    final history = historyAsync.valueOrNull ?? [];
+  @override
+  Widget build(BuildContext context) {
+    final gutter = context.isMobile ? 16.0 : 24.0;
+    // Klaviatura ochiq bo'lganda pastki navigatsiya joy egallamasin.
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final tabsInHeader =
+        MediaQuery.of(context).size.width >= AppHeader.tabsBreakpoint;
 
-    return SafeArea(
-      child: Scaffold(
-        body: RefreshIndicator(
-          onRefresh: () async {
-            ref.read(dictationProvider.notifier).refresh();
-            ref.invalidate(historyProvider);
-          },
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (scrollInfo) {
-              if (scrollInfo.metrics.pixels >=
-                      scrollInfo.metrics.maxScrollExtent - 200 &&
-                  state.hasMore &&
-                  !state.isLoadingMore) {
-                ref.read(dictationProvider.notifier).fetchNextPage();
-              }
-              return false;
-            },
-            child: CustomScrollView(
-              slivers: [
-                AppBarMain(),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    childCount: list.length + (state.hasMore ? 1 : 0),
-                    (context, index) {
-                      if (index >= list.length) {
-                        return Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-                      final dictItem = list[index];
-                      final isDone = history.where((el) {
-                        log("Checking item: ${el.id} against dictItem: ${dictItem.id}");
-                        return el.id == dictItem.id;
-                      }).isNotEmpty;
-                      log("isDone: $isDone, id: ${dictItem.id}");
-
-                      return MainCard(
-                        text: dictItem,
-                        issDone: isDone,
-                      );
-                    },
+    return Scaffold(
+      body: AppBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1100),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(gutter, 12, gutter, 0),
+                    child: AppHeader(
+                      index: _index,
+                      onChanged: _select,
+                      showTabs: tabsInHeader,
+                    ),
                   ),
                 ),
-                SliverPadding(padding: EdgeInsets.all(24)),
-              ],
-            ),
+              ),
+              Expanded(
+                child: IndexedStack(
+                  index: _index,
+                  children: [
+                    const DictationList(),
+                    TypingView(active: _index == 1),
+                  ],
+                ),
+              ),
+              if (!tabsInHeader && !keyboardOpen)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: GlassBar(
+                      padding: const EdgeInsets.all(6),
+                      child: SectionTabs(
+                        index: _index,
+                        onChanged: _select,
+                        expand: true,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

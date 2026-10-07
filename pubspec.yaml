@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.6.1
@@ -74,38 +74,28 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/fonts/
     - assets/images/
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+    - assets/words/
 
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
-
-  # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/to/asset-from-package
-
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
+  # Landing sahifa (imlogo.uz) bilan bir xil shriftlar. Uchalasi ham
+  # o'zgaruvchan (variable) shrift — qalinlik `AppText` orqali beriladi.
   fonts:
-    - family: Bold
+    - family: SpaceGrotesk
       fonts:
-        - asset: assets/fonts/Outfit-Bold.ttf
+        - asset: assets/fonts/SpaceGrotesk.ttf
 
-    - family: Extra-Bold
+    - family: Inter
       fonts:
-        - asset: assets/fonts/Outfit-ExtraBold.ttf
+        - asset: assets/fonts/Inter.ttf
 
-    - family: Medium
+    - family: JetBrainsMono
       fonts:
-        - asset: assets/fonts/Outfit-Medium.ttf
+        - asset: assets/fonts/JetBrainsMono.ttf
 
-    - family: Regular
+    # Faqat logotip uchun
+    - family: Fredoka
       fonts:
-        - asset: assets/fonts/Outfit-Regular.ttf
+        - asset: assets/fonts/Fredoka.ttf
 
   #         style: italic
   #   - family: Trajan Pro

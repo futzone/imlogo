@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-import '../../core/config/app_fonts.dart';
+import '../../core/theme/app_theme.dart';
 
 class CountdownTimer extends StatefulWidget {
   final int seconds;
@@ -61,15 +61,23 @@ class _CountdownTimerState extends State<CountdownTimer> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      spacing: 8,
-      children: [
-        Icon(Icons.timelapse_outlined, color: Colors.white),
-        Text(
-          formatTime(remainingSeconds),
-          style: TextStyle(fontFamily: mediumFamily, color: Colors.white, fontSize: 18),
-        ),
-      ],
+    // Oxirgi daqiqada taymer qizil rangga o'tadi.
+    final color = remainingSeconds <= 60 ? AppColors.error : AppColors.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timelapse_outlined, color: color, size: 18),
+          const SizedBox(width: 6),
+          Text(formatTime(remainingSeconds), style: AppText.mono(15, color: color)),
+        ],
+      ),
     );
   }
 }

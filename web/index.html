@@ -37,6 +37,11 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <link rel="manifest" href="manifest.json">
+
+  <!-- Logotip shrifti (yuklanish ekrani uchun) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700&display=swap" rel="stylesheet">
 </head>
 
 <style>
@@ -51,15 +56,20 @@
 }
 
 .indicator{
-    width: 100px;
-    height: 100px;
-    margin-bottom: 15px;
+    width: 200px;
+    height: auto;
+    margin-bottom: 20px;
+}
 
+.imlogo-text {
+    font-family: 'Fredoka', 'Nunito', 'Arial Rounded MT Bold', sans-serif;
+    font-size: 100px;
+    font-weight: 700;
 }
 
 .progress-bar {
-  width: 100px;
-  background-color: #f3f3f3;
+  width: 200px;
+  background-color: #f3eefa;
   border-radius: 4px;
 }
 
@@ -75,7 +85,7 @@
 .progress-bar-fill {
   display: block;
   height: 5px;
-  background-color: #46494b;
+  background-color: #6750A4;
   border-radius: 4px;
   transition: width 0.2s ease-in;
   animation: progress 5s ease-in-out forwards;
@@ -84,7 +94,11 @@
 <body style="overflow: hidden;">
 <div id="loading_indicator" class="container">
 
-  <img class="indicator" src="./assets/splash_logo.svg"/>
+  <svg class="indicator" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 415 78" role="img" aria-label="Imlo Go">
+    <text x="0" y="74" class="imlogo-text">
+      <tspan fill="#AF6EFF">IMLO</tspan><tspan fill="#000000">GO</tspan>
+    </text>
+  </svg>
   <div class="progress-bar">
     <div class="progress-bar-fill" style="width: 50%;"></div>
   </div>

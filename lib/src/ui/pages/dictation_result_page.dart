@@ -1,250 +1,197 @@
 import 'package:dication/src/core/config/app_device.dart';
-import 'package:dication/src/core/config/app_fonts.dart';
 import 'package:dication/src/core/config/app_router.dart';
+import 'package:dication/src/core/models/detected_error.dart';
 import 'package:dication/src/core/models/error_type.dart';
 import 'package:dication/src/core/models/work.dart';
+import 'package:dication/src/core/theme/app_theme.dart';
+import 'package:dication/src/core/utils/get_rate_color.dart';
 import 'package:dication/src/ui/pages/main_page.dart';
-import 'package:dication/src/ui/widgets/primary_button.dart';
+import 'package:dication/src/ui/widgets/app_badge.dart';
+import 'package:dication/src/ui/widgets/app_buttons.dart';
+import 'package:dication/src/ui/widgets/app_card.dart';
+import 'package:dication/src/ui/widgets/app_scaffold.dart';
+import 'package:dication/src/ui/widgets/stat_tile.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DictationResultPage extends ConsumerStatefulWidget {
+class DictationResultPage extends StatelessWidget {
   final Work work;
   final bool useBack;
 
-  const DictationResultPage(
-      {super.key, this.useBack = false, required this.work});
+  const DictationResultPage({super.key, this.useBack = false, required this.work});
 
-  @override
-  ConsumerState<DictationResultPage> createState() =>
-      _DictationResultPageState();
-}
+  void _goHome(BuildContext context) => AppRouter.open(context, MainPage());
 
-class _DictationResultPageState extends ConsumerState<DictationResultPage> {
   @override
   Widget build(BuildContext context) {
-    if (widget.useBack) return buildBody(context);
+    final page = _buildBody(context);
+    if (useBack) return page;
 
-    return WillPopScope(
-      onWillPop: () async {
-        AppRouter.open(context, MainPage());
-        return false;
+    // Diktantdan keyin "orqaga" bosilsa, yozish sahifasiga emas, bosh sahifaga qaytiladi.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goHome(context);
       },
-      child: buildBody(context),
+      child: page,
     );
   }
 
-  Widget buildBody(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColor,
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontFamily: boldFamily,
-          fontSize: 20,
-        ),
-        iconTheme: IconThemeData(color: Colors.white),
-        title: Text("Natija"),
-      ),
+  Widget _buildBody(BuildContext context) {
+    final gutter = context.isMobile ? 16.0 : 24.0;
+    final rateColor = getRateColor(work.baho);
+    final tileWidth = context.isMobile
+        ? (MediaQuery.of(context).size.width - gutter * 2 - 12) / 2
+        : 190.0;
+
+    return AppPageScaffold(
+      title: "Natija",
+      onBack: useBack ? null : () => _goHome(context),
       body: SingleChildScrollView(
-        padding: EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 16),
+        padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 24),
         child: Column(
-          spacing: 8,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              widget.work.text.title,
-              style: TextStyle(
-                fontSize: context.isDesktop ? 24 : 18,
-                fontFamily: boldFamily,
+            AppCard(
+              corners: true,
+              color: Colors.white.withValues(alpha: 0.85),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const AppBadge(label: 'Diktant natijasi'),
+                        const SizedBox(height: 12),
+                        Text(
+                          work.text.title,
+                          style: AppText.heading(context.isDesktop ? 28 : 22),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text("Ball:", style: AppText.body(15, color: AppColors.muted)),
+                            Text(
+                              work.ball.toStringAsFixed(1),
+                              style: AppText.mono(16),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    children: [
+                      Text(
+                        work.baho.toStringAsFixed(1),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: AppText.mono(
+                          context.isMobile ? 48 : 64,
+                          color: rateColor,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text("BAHO", style: AppText.label()),
+                    ],
+                  ),
+                ],
               ),
             ),
-            Row(
-              spacing: 8,
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
               children: [
-                Text(
-                  "Grafik xatoliklar soni: ",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: mediumFamily,
-                  ),
+                StatTile(
+                  label: "Imloviy xatoliklar",
+                  value: "${work.imloErrorCount} ta",
+                  width: tileWidth,
                 ),
-                Text(
-                  "${widget.work.grafikErrorCount} ta",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: boldFamily,
-                  ),
+                StatTile(
+                  label: "Punktuatsion xatoliklar",
+                  value: "${work.punktuatsionErrorCount} ta",
+                  width: tileWidth,
+                ),
+                StatTile(
+                  label: "Uslubiy xatoliklar",
+                  value: "${work.uslubiyErrorCount} ta",
+                  width: tileWidth,
+                ),
+                StatTile(
+                  label: "Grafik xatoliklar",
+                  value: "${work.grafikErrorCount} ta",
+                  width: tileWidth,
                 ),
               ],
             ),
-            Row(
-              spacing: 8,
-              children: [
-                Text(
-                  "Imloviy xatoliklar soni: ",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: mediumFamily,
-                  ),
-                ),
-                Text(
-                  "${widget.work.imloErrorCount} ta",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: boldFamily,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              spacing: 8,
-              children: [
-                Text(
-                  "Uslubiy xatoliklar soni: ",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: mediumFamily,
-                  ),
-                ),
-                Text(
-                  "${widget.work.uslubiyErrorCount} ta",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: boldFamily,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              spacing: 8,
-              children: [
-                Text(
-                  "Punktuatsion xatoliklar soni: ",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: mediumFamily,
-                  ),
-                ),
-                Text(
-                  "${widget.work.punktuatsionErrorCount} ta",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: boldFamily,
-                  ),
-                ),
-              ],
-            ),
-            if (widget.work.errors.isNotEmpty) SizedBox(),
-            if (widget.work.errors.isNotEmpty)
-              Text(
-                "Xatoliklar",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontFamily: mediumFamily,
-                ),
+            if (work.errors.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              Text("Xatoliklar", style: AppText.heading(20, weight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              for (final item in work.errors) _ErrorCard(error: item),
+            ],
+            const SizedBox(height: 24),
+            Center(
+              child: AppButton(
+                label: "Bosh sahifaga",
+                icon: Icons.home_outlined,
+                onPressed: () => _goHome(context),
               ),
-            for (final item in widget.work.errors)
-              Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).highlightColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: EdgeInsets.all(8),
-                child: Column(
-                  spacing: 4,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Aslida: ",
-                            style: TextStyle(fontFamily: regularFamily)),
-                        Expanded(
-                            child: Text(item.originalFragment,
-                                style: TextStyle(fontFamily: boldFamily))),
-                      ],
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Siz kiritgan: ",
-                            style: TextStyle(fontFamily: regularFamily)),
-                        Expanded(
-                            child: Text(item.userFragment,
-                                style: TextStyle(fontFamily: boldFamily))),
-                      ],
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Xatolik turi: ",
-                            style: TextStyle(fontFamily: regularFamily)),
-                        Expanded(
-                            child: Text(item.type.toName,
-                                style: TextStyle(fontFamily: boldFamily))),
-                      ],
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Xatolik: ",
-                            style: TextStyle(fontFamily: regularFamily)),
-                        Expanded(
-                            child: Text(item.description,
-                                style: TextStyle(fontFamily: boldFamily))),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            SizedBox(),
-            Row(
-              spacing: 8,
-              children: [
-                Text(
-                  "Ball:",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: mediumFamily,
-                  ),
-                ),
-                Text(
-                  widget.work.ball.toStringAsFixed(1),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: boldFamily,
-                  ),
-                ),
-              ],
             ),
-            Row(
-              spacing: 8,
-              children: [
-                Text(
-                  "Baho:",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: mediumFamily,
-                  ),
-                ),
-                Text(
-                  widget.work.baho.toStringAsFixed(1),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: boldFamily,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            PrimaryButton(
-              title: "Bosh sahifaga",
-              onTap: () => AppRouter.open(context, MainPage()),
-            ),
-            SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  final DetectedError error;
+
+  const _ErrorCard({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        children: [
+          _row("Aslida:", error.originalFragment, AppColors.success),
+          _row("Siz kiritgan:", error.userFragment, AppColors.error),
+          _row("Xatolik turi:", error.type.toName, AppColors.primary),
+          _row("Xatolik:", error.description, AppColors.foreground),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 104,
+            child: Text(label, style: AppText.body(13, color: AppColors.muted)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: AppText.body(14, weight: FontWeight.w600, color: color),
+            ),
+          ),
+        ],
       ),
     );
   }

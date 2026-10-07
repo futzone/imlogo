@@ -1,18 +1,18 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dication/src/core/config/app_device.dart';
-import 'package:dication/src/core/config/app_fonts.dart';
+import 'package:dication/src/core/theme/app_theme.dart';
 import 'package:dication/src/core/config/app_router.dart';
 import 'package:dication/src/core/controllers/dictation_controller.dart';
 import 'package:dication/src/core/models/text_model.dart';
 import 'package:dication/src/core/models/work.dart';
 import 'package:dication/src/core/services/dictation_manager.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
+import 'package:dication/src/ui/widgets/app_scaffold.dart';
 import 'package:dication/src/ui/widgets/audio_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/countdown_widget.dart';
-import 'dictation_result_page.dart';
 
 class DictationPage extends ConsumerStatefulWidget {
   final TextModel model;
@@ -89,26 +89,23 @@ class _DictationPageState extends ConsumerState<DictationPage> {
       builder: (context) => AlertDialog(
         title: Text(
           "Diktantni bekor qilish",
-          style: TextStyle(fontFamily: boldFamily, fontSize: 18),
+          style: AppText.heading(18),
         ),
         content: Text(
           "Diktant hali yakunlanmagan. Chiqib ketsangiz, natijalar saqlanmaydi. Chiqishni xohlaysizmi?",
-          style: TextStyle(fontFamily: mediumFamily, fontSize: 15),
+          style: AppText.body(15, color: AppColors.muted),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
+          AppButton(
+            label: "Yo'q, davom etish",
+            variant: AppButtonVariant.ghost,
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              "Yo'q, davom etish",
-              style: TextStyle(fontFamily: mediumFamily),
-            ),
           ),
-          TextButton(
+          AppButton(
+            label: "Ha, chiqish",
+            variant: AppButtonVariant.danger,
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              "Ha, chiqish",
-              style: TextStyle(fontFamily: mediumFamily, color: Colors.red),
-            ),
           ),
         ],
       ),
@@ -152,8 +149,30 @@ class _DictationPageState extends ConsumerState<DictationPage> {
     dictationController.onCreate(work, evaluator1);
   }
 
+  Future<void> _toggleSpeed() async {
+    await _player.setPlaybackRate(_player.playbackRate != 1.0 ? 1.0 : 0.5);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _rewind() async {
+    final seconds = _position.inSeconds - 15;
+    await _player.seek(Duration(seconds: seconds <= 0 ? 0 : seconds));
+  }
+
+  Future<void> _togglePlay() async {
+    if (_isPlaying) {
+      await _player.pause();
+      if (mounted) setState(() => _isPlaying = false);
+    } else {
+      await _player.resume();
+      if (mounted) setState(() => _isPlaying = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final gutter = context.isMobile ? 16.0 : 24.0;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -163,16 +182,9 @@ class _DictationPageState extends ConsumerState<DictationPage> {
           Navigator.of(context).pop();
         }
       },
-      child: Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColor,
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontFamily: boldFamily,
-          fontSize: 20,
-        ),
-        iconTheme: IconThemeData(color: Colors.white),
-        title: Text(widget.model.title),
+      child: AppPageScaffold(
+        title: widget.model.title,
+        onBack: _handleCancel,
         actions: [
           CountdownTimer(
             seconds: widget.model.time * 60,
@@ -182,478 +194,208 @@ class _DictationPageState extends ConsumerState<DictationPage> {
               });
             },
           ),
-          SizedBox(width: 24)
         ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.only(left: 24, right: 24, top: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: Theme.of(context).primaryColor,
-              ),
-              child: Column(
-                children: [
-                  if (!context.isMobile)
-                    Row(
-                      spacing: 16,
-                      children: [
-                        Text(
-                          formatTime(_position.inSeconds),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontFamily: mediumFamily,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Expanded(
-                          child: AudioProgressBar(
-                            position: _position,
-                            duration: _duration,
-                            onChanged: (dur) async {
-                              await _player.seek(dur);
-                            },
-                          ),
-                        ),
-                        Text(
-                          formatTime(_duration.inSeconds),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontFamily: mediumFamily,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(),
-                        SimpleButton(
-                          onPressed: () async {
-                            final playbackRate = _player.playbackRate;
-
-                            if (playbackRate != 1.0) {
-                              await _player.setPlaybackRate(1.0);
-                            } else {
-                              await _player.setPlaybackRate(0.5);
-                            }
-                          },
-                          child: SizedBox(
-                            height: 36,
-                            width: 36,
-                            child: Stack(
-                              children: [
-                                Center(
-                                  child: Icon(
-                                    Icons.speed_outlined,
-                                    size: 32,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                Positioned(
-                                  right: 0,
-                                  child: Container(
-                                    padding: EdgeInsets.only(
-                                      left: 2,
-                                      right: 2,
-                                      top: 2,
-                                      bottom: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(4),
-                                      color: Theme.of(context).primaryColor,
-                                    ),
-                                    child: Text(
-                                      "0.5x",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontFamily: boldFamily,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(),
-                        SimpleButton(
-                          onPressed: () async {
-                            final seconds = (_position.inSeconds - 15);
-                            Duration newPosition =
-                                Duration(seconds: seconds <= 0 ? 0 : seconds);
-                            await _player.seek(newPosition);
-                          },
-                          child: SizedBox(
-                            height: 36,
-                            width: 36,
-                            child: Stack(
-                              children: [
-                                Center(
-                                  child: Icon(
-                                    Icons.settings_backup_restore_outlined,
-                                    size: 32,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                Positioned(
-                                  right: 0,
-                                  child: Container(
-                                    padding: EdgeInsets.only(
-                                      left: 2,
-                                      right: 2,
-                                      top: 2,
-                                      bottom: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(4),
-                                      color: Theme.of(context).primaryColor,
-                                    ),
-                                    child: Text(
-                                      "15s",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontFamily: boldFamily,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(),
-                        SimpleButton(
-                          onPressed: () async {
-                            if (_isPlaying) {
-                              await _player.pause().then(
-                                  (_) => setState(() => _isPlaying = false));
-                            } else {
-                              await _player.resume().then(
-                                  (_) => setState(() => _isPlaying = true));
-                            }
-                          },
-                          child: Icon(
-                            _isPlaying
-                                ? Icons.pause_circle_outline
-                                : Icons.play_circle_outline,
-                            size: 32,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    Column(
-                      children: [
-                        AudioProgressBar(
-                          position: _position,
-                          duration: _duration,
-                          onChanged: (dur) async {
-                            await _player.seek(dur);
-                          },
-                        ),
-                        Row(
-                          spacing: 16,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              formatTime(_position.inSeconds),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontFamily: mediumFamily,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              formatTime(_duration.inSeconds),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontFamily: mediumFamily,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SimpleButton(
-                              onPressed: () async {
-                                final playbackRate = _player.playbackRate;
-
-                                if (playbackRate != 1.0) {
-                                  await _player.setPlaybackRate(1.0);
-                                } else {
-                                  await _player.setPlaybackRate(0.5);
-                                }
-                              },
-                              child: SizedBox(
-                                height: 36,
-                                width: 36,
-                                child: Stack(
-                                  children: [
-                                    Center(
-                                      child: Icon(
-                                        Icons.speed_outlined,
-                                        size: 32,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      right: 0,
-                                      child: Container(
-                                        padding: EdgeInsets.only(
-                                          left: 2,
-                                          right: 2,
-                                          top: 2,
-                                          bottom: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                          color: Theme.of(context).primaryColor,
-                                        ),
-                                        child: Text(
-                                          "0.5x",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontFamily: boldFamily,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  ],
-                                ),
-                              ),
-                            ),
-                            SimpleButton(
-                              onPressed: () async {
-                                final seconds = (_position.inSeconds - 15);
-                                Duration newPosition = Duration(
-                                    seconds: seconds <= 0 ? 0 : seconds);
-                                await _player.seek(newPosition);
-                              },
-                              child: SizedBox(
-                                height: 36,
-                                width: 36,
-                                child: Stack(
-                                  children: [
-                                    Center(
-                                      child: Icon(
-                                        Icons.settings_backup_restore_outlined,
-                                        size: 32,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      right: 0,
-                                      child: Container(
-                                        padding: EdgeInsets.only(
-                                          left: 2,
-                                          right: 2,
-                                          top: 2,
-                                          bottom: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                          color: Theme.of(context).primaryColor,
-                                        ),
-                                        child: Text(
-                                          "15s",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontFamily: boldFamily,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  ],
-                                ),
-                              ),
-                            ),
-                            SimpleButton(
-                              onPressed: () async {
-                                if (_isPlaying) {
-                                  await _player.pause().then((_) =>
-                                      setState(() => _isPlaying = false));
-                                } else {
-                                  await _player.resume().then(
-                                      (_) => setState(() => _isPlaying = true));
-                                }
-                              },
-                              child: Icon(
-                                _isPlaying
-                                    ? Icons.pause_circle_outline
-                                    : Icons.play_circle_outline,
-                                size: 32,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    )
-                ],
-              ),
-            ),
-            SizedBox(height: 24),
-            Text(
-              "Diktant matnini kiritish",
-              style: TextStyle(fontSize: 18, fontFamily: mediumFamily),
-            ),
-            SizedBox(height: 8),
-            TextField(
-              style: TextStyle(fontSize: 16, fontFamily: boldFamily),
-              controller: _textEditingController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).primaryColor,
-                    width: 2,
+        body: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildPlayer(context),
+              const SizedBox(height: 24),
+              Text("DIKTANT MATNINI KIRITISH", style: AppText.label()),
+              const SizedBox(height: 10),
+              TextField(
+                style: AppText.body(16, height: 1.6),
+                controller: _textEditingController,
+                cursorColor: AppColors.primary,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.85),
+                  contentPadding: const EdgeInsets.all(16),
+                  hintText: 'Matn kiriting',
+                  hintStyle: AppText.body(16,
+                      color: AppColors.muted.withValues(alpha: 0.6)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.input),
+                    borderSide: BorderSide(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.input),
+                    borderSide:
+                        const BorderSide(color: AppColors.primary, width: 2),
                   ),
                 ),
-                contentPadding: EdgeInsets.all(16),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).primaryColor,
-                    width: 2,
-                  ),
-                ),
-                hintText: 'Matn kiriting',
+                maxLines: null,
+                minLines: 8,
               ),
-              maxLines: null,
-              minLines: 8,
-            ),
-            SizedBox(height: 24),
-            if (!context.isMobile)
-              Row(
-                spacing: 24,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.end,
+              const SizedBox(height: 24),
+              Wrap(
+                alignment:
+                    context.isMobile ? WrapAlignment.center : WrapAlignment.end,
+                spacing: 16,
+                runSpacing: 12,
+                verticalDirection: context.isMobile
+                    ? VerticalDirection.up
+                    : VerticalDirection.down,
                 children: [
-                  SimpleButton(
+                  AppButton(
+                    label: "Bekor qilish",
+                    variant: AppButtonVariant.danger,
                     onPressed: _handleCancel,
-                    child: Container(
-                      margin: EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(48),
-                          border: Border.all(color: Colors.red)),
-                      padding: EdgeInsets.only(
-                        left: 32,
-                        right: 32,
-                        top: 12,
-                        bottom: 12,
-                      ),
-                      child: Text(
-                        "Bekor Qilish".toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontFamily: mediumFamily,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ),
                   ),
-                  SimpleButton(
-                    onPressed: () {
-                      _completeDictation();
-                    },
-                    child: Container(
-                      margin: EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(48),
-                        gradient: LinearGradient(
-                          colors: [Colors.blue, Colors.red],
-                        ),
-                      ),
-                      padding: EdgeInsets.only(
-                        left: 32,
-                        right: 32,
-                        top: 12,
-                        bottom: 12,
-                      ),
-                      child: Text(
-                        "Diktantni Yakunlash".toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontFamily: mediumFamily,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                  AppButton(
+                    label: "Diktantni yakunlash",
+                    trailingIcon: Icons.check,
+                    onPressed: _completeDictation,
                   ),
                 ],
-              )
-            else
-              Center(
-                child: Column(
-                  spacing: 24,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SimpleButton(
-                      onPressed: () {
-                        _completeDictation();
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(48),
-                          gradient: LinearGradient(
-                            colors: [Colors.blue, Colors.red],
-                          ),
-                        ),
-                        padding: EdgeInsets.only(
-                          left: 32,
-                          right: 32,
-                          top: 12,
-                          bottom: 12,
-                        ),
-                        child: Text(
-                          "Diktantni Yakunlash".toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontFamily: mediumFamily,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SimpleButton(
-                      onPressed: () {
-                        AppRouter.close(context);
-                      },
-                      child: Container(
-                        margin: EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(48),
-                            border: Border.all(color: Colors.red)),
-                        padding: EdgeInsets.only(
-                          left: 32,
-                          right: 32,
-                          top: 12,
-                          bottom: 12,
-                        ),
-                        child: Text(
-                          "Bekor Qilish".toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontFamily: mediumFamily,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-          ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
+    );
+  }
+
+  /// Audio pleyer paneli: gradient fon, vaqt, tezlik, orqaga qaytarish.
+  Widget _buildPlayer(BuildContext context) {
+    final timeStyle = AppText.mono(15, color: Colors.white);
+    final progress = AudioProgressBar(
+      position: _position,
+      duration: _duration,
+      onChanged: (dur) async {
+        await _player.seek(dur);
+      },
+    );
+    final controls = [
+      _PlayerButton(
+        icon: Icons.speed_outlined,
+        badge: "0.5x",
+        tooltip: "Tezlik: 0.5x / 1x",
+        active: _player.playbackRate != 1.0,
+        onPressed: _toggleSpeed,
+      ),
+      _PlayerButton(
+        icon: Icons.settings_backup_restore_outlined,
+        badge: "15s",
+        tooltip: "15 soniya orqaga",
+        onPressed: _rewind,
+      ),
+      _PlayerButton(
+        icon: _isPlaying ? Icons.pause : Icons.play_arrow,
+        tooltip: _isPlaying ? "To'xtatish" : "Davom ettirish",
+        filled: true,
+        onPressed: _togglePlay,
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppColors.brandGradient,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: AppShadows.glow,
+      ),
+      child: context.isMobile
+          ? Column(
+              children: [
+                progress,
+                Row(
+                  children: [
+                    // Tor ekranda vaqt yozuvi kichrayadi, tugmalar o'lchami saqlanadi.
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "${formatTime(_position.inSeconds)} / ${formatTime(_duration.inSeconds)}",
+                          style: timeStyle,
+                        ),
+                      ),
+                    ),
+                    ...controls,
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Text(formatTime(_position.inSeconds), style: timeStyle),
+                Expanded(child: progress),
+                Text(formatTime(_duration.inSeconds), style: timeStyle),
+                const SizedBox(width: 12),
+                ...controls,
+              ],
+            ),
+    );
+  }
+}
+
+class _PlayerButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final String? badge;
+  final bool filled;
+  final bool active;
+  final VoidCallback onPressed;
+
+  const _PlayerButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.badge,
+    this.filled = false,
+    this.active = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: SimpleButton(
+        onPressed: onPressed,
+        child: Container(
+          width: 44,
+          height: 44,
+          margin: const EdgeInsets.only(left: 6),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: filled
+                ? Colors.white
+                : Colors.white.withValues(alpha: active ? 0.3 : 0.12),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: filled ? AppColors.primary : Colors.white,
+              ),
+              if (badge != null)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.white,
+                    ),
+                    child: Text(
+                      badge!,
+                      style: AppText.mono(8,
+                          weight: FontWeight.w700, color: AppColors.primary),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
