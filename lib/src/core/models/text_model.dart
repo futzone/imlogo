@@ -24,12 +24,12 @@ class TextModel {
   factory TextModel.fromJson(map) {
     return TextModel(
       id: map['id'].toString(),
-      text: map['text'],
-      time: map['time'],
-      title: map['title'],
-      length: map['length'],
-      ageName: map['ageName'],
-      className: map['className'],
+      text: map['text'] ?? '',
+      time: (map['time'] as num? ?? 0).toInt(),
+      title: map['title'] ?? '',
+      length: (map['length'] as num? ?? 0).toInt(),
+      ageName: map['ageName'] ?? '',
+      className: map['className'] ?? '',
       url: map['url'],
       createdDate: map['createdDate'] != null
           ? DateTime.tryParse(map['createdDate'])

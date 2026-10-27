@@ -1,7 +1,7 @@
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/theme/app_theme.dart';
 import 'package:dication/src/providers/dictation_provider.dart';
-import 'package:dication/src/providers/history_provider.dart';
+import 'package:dication/src/providers/account_provider.dart';
 import 'package:dication/src/ui/screens/main_screens/main_card.dart';
 import 'package:dication/src/ui/widgets/app_badge.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
@@ -15,7 +15,7 @@ class DictationList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dictationProvider);
-    final history = ref.watch(historyProvider).valueOrNull ?? [];
+    final history = ref.watch(userHistoryProvider).valueOrNull?.works ?? [];
 
     if (state.isInitialLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -37,7 +37,7 @@ class DictationList extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               AppButton(
-                label: 'Qayta urinish',
+                label: 'Qayta uriniş',
                 icon: Icons.refresh,
                 variant: AppButtonVariant.outline,
                 onPressed: () => ref.read(dictationProvider.notifier).refresh(),
@@ -56,7 +56,7 @@ class DictationList extends ConsumerWidget {
       color: AppColors.primary,
       onRefresh: () async {
         ref.read(dictationProvider.notifier).refresh();
-        ref.invalidate(historyProvider);
+        invalidateHistory(ref);
       },
       child: NotificationListener<ScrollNotification>(
         onNotification: (scrollInfo) {
@@ -119,12 +119,12 @@ class _Intro extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.end,
             children: [
               Text('Diktantni tanlang va ', style: titleStyle),
-              GradientText('yozishni boshlang', style: titleStyle),
+              GradientText('yozişni boşlang', style: titleStyle),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Audio eshitasiz, matnni yozasiz, tizim esa imlo xatolarni avtomatik tekshiradi.',
+            'Audio eşitasiz, matnni yozasiz, tizim esa imlo xatolarni avtomatik tekşiradi.',
             style: AppText.body(15, color: AppColors.muted),
           ),
         ],

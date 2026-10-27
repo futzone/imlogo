@@ -6,6 +6,7 @@ import 'package:dication/src/core/models/work.dart';
 import 'package:dication/src/core/typing/typing_config.dart';
 import 'package:dication/src/core/typing/typing_engine.dart';
 import 'package:dication/src/ui/pages/dictation_result_page.dart';
+import 'package:dication/src/ui/pages/main_page.dart';
 import 'package:dication/src/ui/screens/additional_screens/about_app_screen.dart';
 import 'package:dication/src/ui/screens/main_screens/app_header.dart';
 import 'package:dication/src/ui/screens/main_screens/before_start_screen.dart';
@@ -14,6 +15,7 @@ import 'package:dication/src/ui/screens/main_screens/result_card.dart';
 import 'package:dication/src/ui/screens/typing/typing_result_view.dart';
 import 'package:dication/src/ui/screens/typing/typing_config_bar.dart';
 import 'package:dication/src/ui/screens/typing/typing_words_view.dart';
+import 'package:dication/src/ui/shell/app_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -71,15 +73,15 @@ void main() {
     }
   });
 
-  testWidgets('sarlavha va bo‘lim yorliqlari hech bir kenglikda toshib chiqmaydi', (tester) async {
-    for (final width in widths) {
+  testWidgets('pastki menyu va bo‘lim yorliqlari hech bir kenglikda toshib chiqmaydi', (tester) async {
+    for (final width in widths.where((w) => w < MainPage.sidebarBreakpoint)) {
       await pumpAt(
         tester,
         width,
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppHeader(index: 1, onChanged: (_) {}, showTabs: width >= AppHeader.tabsBreakpoint),
+            MobileNavBar(tab: AppTab.translator, onOpen: (_) {}),
             SectionTabs(index: 0, onChanged: (_) {}, expand: true),
           ],
         ),

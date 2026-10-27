@@ -3,7 +3,7 @@ import 'package:dication/src/core/typing/typing_config.dart';
 import 'package:dication/src/ui/widgets/hovered_widget.dart';
 import 'package:flutter/material.dart';
 
-/// Mashq sozlamalari: tinish belgilari, raqamlar, rejim va miqdor.
+/// Mashq sozlamalari: yozuv, tinish belgilari, raqamlar, rejim va miqdor.
 class TypingConfigBar extends StatelessWidget {
   final TypingConfig config;
   final ValueChanged<TypingConfig> onChanged;
@@ -23,13 +23,21 @@ class TypingConfigBar extends StatelessWidget {
     );
   }
 
-  static const double _singleRowWidth = 760;
+  static const double _singleRowWidth = 900;
 
   Widget _build({required bool compact}) {
+    final alphabets = [
+      for (final entry in TypingConfig.alphabetOptions.entries)
+        _Option(
+          label: entry.value,
+          selected: config.alphabet == entry.key,
+          onTap: () => onChanged(config.copyWith(alphabet: entry.key)),
+        ),
+    ];
     final toggles = [
       _Option(
         icon: Icons.alternate_email,
-        label: 'tinish belgilari',
+        label: 'tiniş belgilari',
         selected: config.punctuation,
         onTap: () =>
             onChanged(config.copyWith(punctuation: !config.punctuation)),
@@ -50,7 +58,7 @@ class TypingConfigBar extends StatelessWidget {
       ),
       _Option(
         icon: compact ? null : Icons.text_fields,
-        label: 'so‘zlar',
+        label: 'sözlar',
         selected: config.mode == TypingMode.words,
         onTap: () => onChanged(config.withMode(TypingMode.words)),
       ),
@@ -79,7 +87,10 @@ class TypingConfigBar extends StatelessWidget {
                 // Juda tor ekranda qator kichrayadi, lekin toshib chiqmaydi.
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: toggles),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [...alphabets, const _Divider(), ...toggles],
+                  ),
                 ),
                 FittedBox(
                   fit: BoxFit.scaleDown,
@@ -95,6 +106,12 @@ class TypingConfigBar extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6, right: 2),
+                    child: Icon(Icons.translate, size: 15, color: AppColors.muted),
+                  ),
+                  ...alphabets,
+                  const _Divider(),
                   ...toggles,
                   const _Divider(),
                   ...modes,

@@ -5,13 +5,17 @@ class AppConstants {
   static const String iOSApp = "";
   static const String windowsApp = "";
   static const String telegramChannel = "https://t.me/imlogo";
-  static const String website = "";
+
+  /// Xatolik haqida xabar berish va yordam uchun Telegram bot.
+  static const String telegramBot = "https://t.me/Qahor0v_bot";
+  static const String website = "https://imlogo.uz";
+  static const String docs = "https://imlogo.uz/qollanma";
 
   static Future<void> launchAppFor(platform) async {
     await launchUrlString("https://www.imlogo.uz/");
   }
 
   static const String aboutText =
-      "Loyiha, Alisher Navoiy nomidagi Toshkent davlat o'zbek tili va adabiyoti universiteti, «Kompyuter lingvistikasi» yo'nalishi bitiruvchi kurs talabasi Abdumalikova Gulshoda tomonidan bitiruv malakaviy topshiriq ishi sifatida tayyorlandi.";
+      "Loyiha, Alişer Navoiy nomidagi Toşkent davlat özbek tili va adabiyoti universiteti, «Kompyuter lingvistikasi» yönalişi bitiruvçi kurs talabasi Abdumalikova Gulşoda tomonidan bitiruv malakaviy topşiriq işi sifatida tayyorlandi.";
 
 }

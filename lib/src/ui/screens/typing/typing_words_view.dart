@@ -28,13 +28,21 @@ class TypingWordsView extends StatefulWidget {
 
 class _TypingWordsViewState extends State<TypingWordsView>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _blink = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 530),
-  )..repeat(reverse: true);
+  // `initState` da yaratiladi: kursor hech ko'rsatilmagan bo'lsa ham `dispose`
+  // da dangasa yaratilib, deaktiv daraxtga murojaat qilmasligi uchun.
+  late final AnimationController _blink;
 
   double? _charWidth;
   double? _measuredFor;
+
+  @override
+  void initState() {
+    super.initState();
+    _blink = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 530),
+    )..repeat(reverse: true);
+  }
 
   @override
   void dispose() {

@@ -18,7 +18,7 @@ class MainCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          "Boshlash",
+          "Boşlaş",
           style: AppText.body(15,
               weight: FontWeight.w600, color: AppColors.primary),
         ),
@@ -63,17 +63,17 @@ class MainCard extends StatelessWidget {
                         ),
                         MetaChip(
                           icon: Icons.text_fields,
-                          label: "So'zlar soni: ${text.length} ta",
+                          label: "Sözlar soni: ${text.length} ta",
                         ),
                         MetaChip(
                           icon: Icons.accessibility,
                           label:
-                              "Yosh chegarasi: ${text.ageName} yosh, (${text.className})",
+                              "Yoş çegarasi: ${text.ageName} yoş, (${text.className})",
                         ),
                         if (text.formattedDate.isNotEmpty)
                           MetaChip(
                             icon: Icons.calendar_today_outlined,
-                            label: "Qo'shilgan vaqti: ${text.formattedDate}",
+                            label: "Qöşilgan vaqti: ${text.formattedDate}",
                           ),
                       ],
                     ),

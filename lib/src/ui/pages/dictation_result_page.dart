@@ -137,7 +137,7 @@ class DictationResultPage extends StatelessWidget {
             const SizedBox(height: 24),
             Center(
               child: AppButton(
-                label: "Bosh sahifaga",
+                label: "Boş sahifaga",
                 icon: Icons.home_outlined,
                 onPressed: () => _goHome(context),
               ),

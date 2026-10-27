@@ -236,7 +236,7 @@ class DiktantEvaluator {
       if (normOrig.replaceAll('o\u2018', 'o') == normUser) {
         _addError(DetectedError(
           type: ErrorType.GRAFIK,
-          description: "o\u2018 harfidagi belgi tushib qolgan",
+          description: "o\u2018 harfidagi belgi tuşib qolgan",
           originalFragment: origToken,
           userFragment: userToken,
           specificRuleCode: "grafik_o_belgi_tushgan",
@@ -248,7 +248,7 @@ class DiktantEvaluator {
       if (normOrig.replaceAll('O\u2018', 'O') == normUser) {
         _addError(DetectedError(
           type: ErrorType.GRAFIK,
-          description: "O\u2018 harfidagi belgi tushib qolgan",
+          description: "O\u2018 harfidagi belgi tuşib qolgan",
           originalFragment: origToken,
           userFragment: userToken,
           specificRuleCode: "grafik_o_belgi_tushgan",
@@ -262,7 +262,7 @@ class DiktantEvaluator {
       if (normOrig.replaceAll('g\u2018', 'g') == normUser) {
         _addError(DetectedError(
           type: ErrorType.GRAFIK,
-          description: "g\u2018 harfidagi belgi tushib qolgan",
+          description: "g\u2018 harfidagi belgi tuşib qolgan",
           originalFragment: origToken,
           userFragment: userToken,
           specificRuleCode: "grafik_g_belgi_tushgan",
@@ -274,7 +274,7 @@ class DiktantEvaluator {
       if (normOrig.replaceAll('G\u2018', 'G') == normUser) {
         _addError(DetectedError(
           type: ErrorType.GRAFIK,
-          description: "G\u2018 harfidagi belgi tushib qolgan",
+          description: "G\u2018 harfidagi belgi tuşib qolgan",
           originalFragment: origToken,
           userFragment: userToken,
           specificRuleCode: "grafik_g_belgi_tushgan",
@@ -320,7 +320,7 @@ class DiktantEvaluator {
       if (origHasApostrophe && !userHasApostrophe) {
         _addError(DetectedError(
           type: ErrorType.IMLO,
-          description: "Tutuq belgisi tushib qolgan",
+          description: "Tutuq belgisi tuşib qolgan",
           originalFragment: origToken,
           userFragment: userToken,
           specificRuleCode: 'imlo_tutuq_tushibqolgan',
@@ -329,7 +329,7 @@ class DiktantEvaluator {
       } else if (!origHasApostrophe && userHasApostrophe) {
         _addError(DetectedError(
           type: ErrorType.IMLO,
-          description: "O\u2018rinsiz tutuq belgisi ishlatilgan",
+          description: "Örinsiz tutuq belgisi işlatilgan",
           originalFragment: origToken,
           userFragment: userToken,
           specificRuleCode: 'imlo_tutuq_orinsiz',
@@ -346,7 +346,7 @@ class DiktantEvaluator {
     if (normOrig.contains('h') && normUser.contains('x') && normOrig.replaceAll('h', 'x') == normUser) {
       _addError(DetectedError(
         type: ErrorType.IMLO,
-        description: "h o\u2018rniga x yozilgan",
+        description: "h örniga x yozilgan",
         originalFragment: origToken,
         userFragment: userToken,
         specificRuleCode: 'imlo_h_x_almashinuvi',
@@ -356,7 +356,7 @@ class DiktantEvaluator {
     if (normOrig.contains('x') && normUser.contains('h') && normOrig.replaceAll('x', 'h') == normUser) {
       _addError(DetectedError(
         type: ErrorType.IMLO,
-        description: "x o\u2018rniga h yozilgan",
+        description: "x örniga h yozilgan",
         originalFragment: origToken,
         userFragment: userToken,
         specificRuleCode: 'imlo_h_x_almashinuvi',
@@ -428,8 +428,8 @@ class DiktantEvaluator {
         _addError(DetectedError(
           type: _isPunctuation(token) ? ErrorType.PUNKTUATSION : ErrorType.IMLO,
           description: _isPunctuation(token)
-              ? "Ortiqcha tinish belgisi"
-              : "Ortiqcha so\u2018z",
+              ? "Ortiqça tiniş belgisi"
+              : "Ortiqça söz",
           originalFragment: '',
           userFragment: token,
           specificRuleCode: _isPunctuation(token)
@@ -444,7 +444,7 @@ class DiktantEvaluator {
     if (userTokens.isEmpty) {
       _addError(DetectedError(
         type: ErrorType.IMLO,
-        description: "Barcha so\u2018zlar tushib qolgan",
+        description: "Barça sözlar tuşib qolgan",
         originalFragment: originalText,
         userFragment: '',
         specificRuleCode: 'imlo_barcha_soz_tushibqolgan',
@@ -453,7 +453,7 @@ class DiktantEvaluator {
         if (_isPunctuation(token)) {
           _addError(DetectedError(
             type: ErrorType.PUNKTUATSION,
-            description: "Tinish belgisi tushib qolgan",
+            description: "Tiniş belgisi tuşib qolgan",
             originalFragment: token,
             userFragment: '',
             specificRuleCode: 'punkt_tushibqolgan_umumiy',
@@ -481,7 +481,7 @@ class DiktantEvaluator {
         if (_isPunctuation(token)) {
           _addError(DetectedError(
             type: ErrorType.PUNKTUATSION,
-            description: "Tinish belgisi tushib qolgan",
+            description: "Tiniş belgisi tuşib qolgan",
             originalFragment: token,
             userFragment: '',
             specificRuleCode: 'punkt_tushibqolgan_katastrofik',
@@ -528,7 +528,7 @@ class DiktantEvaluator {
       if (deletedWordBuffer.isNotEmpty) {
         final desc = deletedWordBuffer.length >= _significantMissingWords
             ? "Matnning katta qismi yozilmagan"
-            : "So\u2018z(lar) tushib qolgan";
+            : "Söz(lar) tuşib qolgan";
         final code = deletedWordBuffer.length >= _significantMissingWords
             ? 'imlo_katta_hajm_tushibqolgan'
             : 'imlo_tushibqolgan_guruh';
@@ -547,7 +547,7 @@ class DiktantEvaluator {
       if (insertedWordBuffer.isNotEmpty) {
         _addError(DetectedError(
           type: ErrorType.IMLO,
-          description: "Ortiqcha so\u2018z(lar)",
+          description: "Ortiqça söz(lar)",
           originalFragment: '',
           userFragment: insertedWordBuffer.join(' '),
           specificRuleCode: 'imlo_ortiqcha_guruh',
@@ -577,7 +577,7 @@ class DiktantEvaluator {
         if (combinedNorm == userNorm) {
           _addError(DetectedError(
             type: ErrorType.IMLO,
-            description: "So\u2018zlar qo\u2018shib yozilgan",
+            description: "Sözlar qöşib yozilgan",
             originalFragment: combined.join(' '),
             userFragment: userToken,
             specificRuleCode: 'imlo_sozlar_qoshib_yozilgan',
@@ -591,7 +591,7 @@ class DiktantEvaluator {
           if (bufferNorm == userNorm) {
             _addError(DetectedError(
               type: ErrorType.IMLO,
-              description: "So\u2018zlar qo\u2018shib yozilgan",
+              description: "Sözlar qöşib yozilgan",
               originalFragment: deletedWordBuffer.join(' '),
               userFragment: userToken,
               specificRuleCode: 'imlo_sozlar_qoshib_yozilgan',
@@ -610,7 +610,7 @@ class DiktantEvaluator {
         if (combinedNorm == origNorm) {
           _addError(DetectedError(
             type: ErrorType.IMLO,
-            description: "So\u2018z ajratib yozilgan",
+            description: "Söz ajratib yozilgan",
             originalFragment: origToken,
             userFragment: combined.join(' '),
             specificRuleCode: 'imlo_soz_ajratib_yozilgan',
@@ -648,7 +648,7 @@ class DiktantEvaluator {
           if (_isPunctuation(orig)) {
             _addError(DetectedError(
               type: ErrorType.PUNKTUATSION,
-              description: "Tinish belgisi tushib qolgan",
+              description: "Tiniş belgisi tuşib qolgan",
               originalFragment: orig,
               userFragment: '',
               specificRuleCode: 'punkt_tushibqolgan_umumiy',
@@ -663,7 +663,7 @@ class DiktantEvaluator {
           if (_isPunctuation(user)) {
             _addError(DetectedError(
               type: ErrorType.PUNKTUATSION,
-              description: "Ortiqcha tinish belgisi",
+              description: "Ortiqça tiniş belgisi",
               originalFragment: '',
               userFragment: user,
               specificRuleCode: 'punkt_ortiqcha_umumiy',
@@ -698,7 +698,7 @@ class DiktantEvaluator {
     if (orig.toLowerCase() == user.toLowerCase() && orig != user) {
       _addError(DetectedError(
         type: ErrorType.IMLO,
-        description: "Bosh harf imlosida xato",
+        description: "Boş harf imlosida xato",
         originalFragment: orig,
         userFragment: user,
         specificRuleCode: 'imlo_bosh_harf_umumiy',
@@ -718,7 +718,7 @@ class DiktantEvaluator {
       if (orig != user) {
         _addError(DetectedError(
           type: ErrorType.PUNKTUATSION,
-          description: "Tinish belgisi noto\u2018g\u2018ri qo\u2018llanilgan",
+          description: "Tiniş belgisi notöğri qöllanilgan",
           originalFragment: orig,
           userFragment: user,
           specificRuleCode: 'punkt_belgi_almashgan_umumiy',
@@ -732,8 +732,8 @@ class DiktantEvaluator {
       _addError(DetectedError(
         type: ErrorType.IMLO,
         description: origIsPunct
-            ? "Tinish belgisi o\u2018rniga so\u2018z yozilgan"
-            : "So\u2018z o\u2018rniga tinish belgisi yozilgan",
+            ? "Tiniş belgisi örniga söz yozilgan"
+            : "Söz örniga tiniş belgisi yozilgan",
         originalFragment: orig,
         userFragment: user,
         specificRuleCode: 'imlo_soz_va_punkt_almashuvi_umumiy',
@@ -754,7 +754,7 @@ class DiktantEvaluator {
     if (normOrigLower == normUserLower && orig != user) {
       _addError(DetectedError(
         type: ErrorType.IMLO,
-        description: "Bosh harf imlosida xato",
+        description: "Boş harf imlosida xato",
         originalFragment: orig,
         userFragment: user,
         specificRuleCode: 'imlo_bosh_harf_umumiy',
@@ -785,7 +785,7 @@ class DiktantEvaluator {
     // 6. Umumiy imlo xatosi
     _addError(DetectedError(
       type: ErrorType.IMLO,
-      description: "So\u2018zni noto\u2018g\u2018ri yozish",
+      description: "Sözni notöğri yoziş",
       originalFragment: orig,
       userFragment: user,
       specificRuleCode: 'imlo_soz_almashtirish_${normOrigLower}_vs_$normUserLower',

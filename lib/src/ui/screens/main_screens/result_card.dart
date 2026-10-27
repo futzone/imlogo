@@ -79,12 +79,12 @@ class ResultCard extends StatelessWidget {
                         ),
                         MetaChip(
                           icon: Icons.text_fields,
-                          label: "So'zlar soni: ${model.text.length} ta",
+                          label: "Sözlar soni: ${model.text.length} ta",
                         ),
                         MetaChip(
                           icon: Icons.accessibility,
                           label:
-                              "Yosh chegarasi: ${model.text.ageName} yosh, (${model.text.className})",
+                              "Yoş çegarasi: ${model.text.ageName} yoş, (${model.text.className})",
                         ),
                       ],
                     ),

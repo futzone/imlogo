@@ -1,3 +1,4 @@
+import 'package:dication/src/core/services/pb_client.dart';
 import 'package:dication/src/core/theme/app_theme.dart';
 import 'package:dication/src/ui/pages/main_page.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ const appVersion = "v1.1.0";
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
+  await initPocketBase();
   runApp(ProviderScope(child: const MyApp()));
 }
 

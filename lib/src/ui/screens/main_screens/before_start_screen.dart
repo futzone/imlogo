@@ -20,7 +20,7 @@ class BeforeStartScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Audio tayyorlanish jarayonida. Iltimos, hozircha boshqa diktantni sinab ko'ring!",
+            "Audio tayyorlaniş jarayonida. Iltimos, hozirça boşqa diktantni sinab köring!",
           ),
         ),
       );
@@ -32,8 +32,8 @@ class BeforeStartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppSheet(
-      title: "Diktantni boshlash",
-      subtitle: "Boshlashdan avval quyidagi qoidalar bilan tanishib chiqing 👇",
+      title: "Diktantni boşlaş",
+      subtitle: "Boşlaşdan avval quyidagi qoidalar bilan tanişib çiqing 👇",
       children: [
         for (var i = 0; i < _rules.length; i++)
           Padding(
@@ -67,7 +67,7 @@ class BeforeStartScreen extends StatelessWidget {
         const SizedBox(height: 12),
         Center(
           child: AppButton(
-            label: "Diktantni boshlash",
+            label: "Diktantni boşlaş",
             trailingIcon: Icons.arrow_forward,
             onPressed: () => _start(context),
           ),
@@ -78,12 +78,12 @@ class BeforeStartScreen extends StatelessWidget {
 }
 
 const _rules = [
-  "✅ Diktant boshlangandan so‘ng sahifani tark etishga ruxsat yo‘q. Agar chiqib ketsangiz, diktant bekor qilinadi.",
-  "⏰ Diktant uchun belgilangan vaqt mavjud. Vaqt tugashi bilan audio avtomatik to‘xtaydi va topshirish imkoniyati yopiladi.",
-  "🎧 Diktant faqat bir marta eshitiladi. Qayta eshitish imkoniyati berilmaydi.",
-  "🖊 Matnni tinglab darhol yozishingiz kerak. Xotiradan yozishga harakat qiling.",
-  "🛑 Yozish davomida internet uzilib qolsa, diktant natijalari saqlanmaydi.",
-  "📵 Telefon yoki kompyuterning ovozini o‘chirib qo‘ymang. Tinglash uchun qurilmaning ovozi yetarli darajada baland bo‘lishi kerak.",
-  "🔒 Firibgarlik (masalan, boshqa sahifani ochish, boshqa yordam so‘rash) aniqlansa, diktant avtomatik tarzda tugatiladi.",
-  "📝 Diktant yakunlangach, natijani ko‘rish va xatolarni tahlil qilish imkoniyati mavjud.",
+  "✅ Diktant boşlangandan söng sahifani tark etişga ruxsat yöq. Agar çiqib ketsangiz, diktant bekor qilinadi.",
+  "⏰ Diktant uçun belgilangan vaqt mavjud. Vaqt tugaşi bilan audio avtomatik töxtaydi va topşiriş imkoniyati yopiladi.",
+  "🎧 Diktant faqat bir marta eşitiladi. Qayta eşitiş imkoniyati berilmaydi.",
+  "🖊 Matnni tinglab darhol yozişingiz kerak. Xotiradan yozişga harakat qiling.",
+  "🛑 Yoziş davomida internet uzilib qolsa, diktant natijalari saqlanmaydi.",
+  "📵 Telefon yoki kompyuterning ovozini öçirib qöymang. Tinglaş uçun qurilmaning ovozi yetarli darajada baland bölişi kerak.",
+  "🔒 Firibgarlik (masalan, boşqa sahifani oçiş, boşqa yordam söraş) aniqlansa, diktant avtomatik tarzda tugatiladi.",
+  "📝 Diktant yakunlangaç, natijani köriş va xatolarni tahlil qiliş imkoniyati mavjud.",
 ];

@@ -1,9 +1,7 @@
-import 'package:pocketbase/pocketbase.dart';
 import 'package:dication/src/core/constants/app_constants.dart';
 import 'package:dication/src/core/models/app_info_model.dart';
 import 'package:dication/src/core/models/text_model.dart';
-
-final _pb = PocketBase('https://admin.imlogo.uz');
+import 'package:dication/src/core/services/pb_client.dart';
 
 class PocketBaseService {
   static const int perPage = 20;
@@ -11,7 +9,7 @@ class PocketBaseService {
   static Future<({List<TextModel> items, int totalPages})> fetchDictations({
     int page = 1,
   }) async {
-    final result = await _pb.collection('dictations').getList(
+    final result = await pb.collection('dictations').getList(
           page: page,
           perPage: perPage,
           sort: '-created',
@@ -21,7 +19,7 @@ class PocketBaseService {
       final audioFileName = record.data['audio'] as String?;
       String? audioUrl;
       if (audioFileName != null && audioFileName.isNotEmpty) {
-        audioUrl = _pb.files.getUrl(record, audioFileName).toString();
+        audioUrl = pb.files.getUrl(record, audioFileName).toString();
       }
 
       final text = record.data['text'] as String? ?? '';
@@ -35,7 +33,7 @@ class PocketBaseService {
         length: text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length,
         time: record.data['time'] ?? 0,
         url: audioUrl,
-        createdDate: DateTime.tryParse(record.created),
+        createdDate: DateTime.tryParse(record.get<String>('created')),
       );
     }).toList();
 
@@ -43,7 +41,7 @@ class PocketBaseService {
   }
 
   static Future<AppInfoModel> fetchAppInfo() async {
-    final record = await _pb.collection('app').getFirstListItem('');
+    final record = await pb.collection('app').getFirstListItem('');
     final data = record.data;
 
     String? _nonEmpty(String? val) =>

@@ -184,7 +184,7 @@ class AppSheet extends StatelessWidget {
               const SizedBox(height: 8),
               Center(
                 child: AppButton(
-                  label: 'Yopish',
+                  label: 'Yopiş',
                   variant: AppButtonVariant.ghost,
                   onPressed: () => Navigator.of(context).pop(),
                 ),

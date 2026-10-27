@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:dication/src/core/models/typing_result.dart';
+import 'package:dication/src/core/translit/translit.dart';
 import 'package:dication/src/core/typing/typing_config.dart';
 import 'package:dication/src/core/typing/typing_words.dart';
+import 'package:dication/src/providers/translit_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -11,10 +13,14 @@ const _resultsBox = 'typing_results';
 const _settingsBox = 'typing_settings';
 const _configKey = 'config';
 
-/// Mashq uchun so'zlar to'plami (`assets/words/uz.txt`).
-final typingWordsProvider = FutureProvider<List<String>>((ref) async {
+/// Mashq uchun so'zlar to'plami (`assets/words/uz.txt`). To'plam lotincha
+/// saqlanadi, yangi alifbo va kirillga lug'at yordamida o'giriladi.
+final typingWordsProvider = FutureProvider.family<List<String>, Alphabet>((ref, alphabet) async {
   final raw = await rootBundle.loadString('assets/words/uz.txt');
-  return parseWordList(raw);
+  final words = parseWordList(raw);
+  if (alphabet == Alphabet.lotin) return words;
+  final lexicon = await ref.watch(lexiconProvider.future);
+  return [for (final word in words) transliterate(word, Alphabet.lotin, alphabet, lexicon)];
 });
 
 /// Saqlangan natijalar, eng yangisi birinchi.

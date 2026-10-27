@@ -13,9 +13,9 @@ class AboutAppScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppSheet(
-      title: "Imlo Go-ni istalgan qurilmada sinab ko'ring",
+      title: "Imlo Go-ni istalgan qurilmada sinab köring",
       subtitle:
-          "Ilovalarimizni yuklab oling va istalgan qurilmada, istalgan paytda «Imlo Go» orqali o'zbek tili imlosi bo'yicha o'z bilimlaringizni orttiring!",
+          "Ilovalarimizni yuklab oling va istalgan qurilmada, istalgan paytda «Imlo Go» orqali özbek tili imlosi böyiça öz bilimlaringizni orttiring!",
       children: [
         AppButton(
           label: "Android Ilova",
@@ -26,7 +26,7 @@ class AboutAppScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         AppButton(
-          label: "iOS uchun Ilova",
+          label: "iOS uçun Ilova",
           icon: Icons.apple_outlined,
           variant: AppButtonVariant.outline,
           expand: true,
@@ -34,7 +34,7 @@ class AboutAppScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         AppButton(
-          label: "Windows uchun Ilova",
+          label: "Windows uçun Ilova",
           icon: Icons.desktop_windows_outlined,
           variant: AppButtonVariant.outline,
           expand: true,

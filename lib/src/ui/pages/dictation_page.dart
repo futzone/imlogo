@@ -88,22 +88,22 @@ class _DictationPageState extends ConsumerState<DictationPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          "Diktantni bekor qilish",
+          "Diktantni bekor qiliş",
           style: AppText.heading(18),
         ),
         content: Text(
-          "Diktant hali yakunlanmagan. Chiqib ketsangiz, natijalar saqlanmaydi. Chiqishni xohlaysizmi?",
+          "Diktant hali yakunlanmagan. Çiqib ketsangiz, natijalar saqlanmaydi. Çiqişni xohlaysizmi?",
           style: AppText.body(15, color: AppColors.muted),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
           AppButton(
-            label: "Yo'q, davom etish",
+            label: "Yöq, davom etiş",
             variant: AppButtonVariant.ghost,
             onPressed: () => Navigator.of(context).pop(false),
           ),
           AppButton(
-            label: "Ha, chiqish",
+            label: "Ha, çiqiş",
             variant: AppButtonVariant.danger,
             onPressed: () => Navigator.of(context).pop(true),
           ),
@@ -202,7 +202,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
             children: [
               _buildPlayer(context),
               const SizedBox(height: 24),
-              Text("DIKTANT MATNINI KIRITISH", style: AppText.label()),
+              Text("DIKTANT MATNINI KIRITIŞ", style: AppText.label()),
               const SizedBox(height: 10),
               TextField(
                 style: AppText.body(16, height: 1.6),
@@ -241,12 +241,12 @@ class _DictationPageState extends ConsumerState<DictationPage> {
                     : VerticalDirection.down,
                 children: [
                   AppButton(
-                    label: "Bekor qilish",
+                    label: "Bekor qiliş",
                     variant: AppButtonVariant.danger,
                     onPressed: _handleCancel,
                   ),
                   AppButton(
-                    label: "Diktantni yakunlash",
+                    label: "Diktantni yakunlaş",
                     trailingIcon: Icons.check,
                     onPressed: _completeDictation,
                   ),
@@ -285,7 +285,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
       ),
       _PlayerButton(
         icon: _isPlaying ? Icons.pause : Icons.play_arrow,
-        tooltip: _isPlaying ? "To'xtatish" : "Davom ettirish",
+        tooltip: _isPlaying ? "Töxtatiş" : "Davom ettiriş",
         filled: true,
         onPressed: _togglePlay,
       ),

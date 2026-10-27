@@ -4,9 +4,13 @@ import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/config/app_router.dart';
 import 'package:dication/src/core/models/typing_result.dart';
 import 'package:dication/src/core/theme/app_theme.dart';
+import 'package:dication/src/core/translit/translit.dart';
+import 'package:dication/src/core/typing/typing_compose.dart';
 import 'package:dication/src/core/typing/typing_config.dart';
 import 'package:dication/src/core/typing/typing_engine.dart';
 import 'package:dication/src/core/typing/typing_words.dart';
+import 'package:dication/src/core/services/account_service.dart';
+import 'package:dication/src/providers/account_provider.dart';
 import 'package:dication/src/providers/typing_provider.dart';
 import 'package:dication/src/ui/pages/results_page.dart';
 import 'package:dication/src/ui/screens/typing/typing_config_bar.dart';
@@ -44,6 +48,12 @@ class _TypingViewState extends ConsumerState<TypingView> {
   TypingConfig _config = const TypingConfig();
   bool _configLoaded = false;
   List<String>? _pool;
+
+  /// [_pool] qaysi yozuvdagi so'zlar.
+  Alphabet? _poolAlphabet;
+
+  /// Yangi alifbo: "s" terilib, "h" kutilayotgan harf o'rni (qarang: [composeYangi]).
+  int? _pending;
   TypingEngine? _engine;
   TypingResult? _result;
   double? _previousBest;
@@ -88,7 +98,8 @@ class _TypingViewState extends ConsumerState<TypingView> {
     _watch
       ..stop()
       ..reset();
-    final pool = _pool;
+    _pending = null;
+    final pool = _poolAlphabet == _config.alphabet ? _pool : null;
     setState(() {
       _result = null;
       _previousBest = null;
@@ -102,8 +113,21 @@ class _TypingViewState extends ConsumerState<TypingView> {
   }
 
   void _changeConfig(TypingConfig config) {
+    final alphabetChanged = config.alphabet != _config.alphabet;
     _config = config;
     TypingStorage.saveConfig(config);
+    if (alphabetChanged) {
+      // Yangi yozuvdagi so'zlar yuklangach `build` mashqni qayta boshlaydi.
+      _timer?.cancel();
+      _watch
+        ..stop()
+        ..reset();
+      setState(() {
+        _engine = null;
+        _result = null;
+      });
+      return;
+    }
     _restart();
   }
 
@@ -124,15 +148,27 @@ class _TypingViewState extends ConsumerState<TypingView> {
     final elapsed = _watch.elapsed;
 
     if (!value.startsWith(_sentinel)) {
+      _pending = null;
       engine.backToPreviousWord();
     } else {
       final text = value.substring(_sentinel.length);
       final space = text.indexOf(RegExp(r'\s'));
+      var word = space >= 0 ? text.substring(0, space) : text;
+      if (engine.config.alphabet == Alphabet.yangi) {
+        final composed = composeYangi(
+          engine.current,
+          word,
+          engine.target,
+          _pending,
+          finalize: space >= 0,
+        );
+        word = composed.value;
+        _pending = composed.pending;
+      }
+      engine.setCurrent(word, elapsed: elapsed);
       if (space >= 0) {
-        engine.setCurrent(text.substring(0, space), elapsed: elapsed);
+        _pending = null;
         engine.commitWord(elapsed: elapsed);
-      } else {
-        engine.setCurrent(text, elapsed: elapsed);
       }
     }
 
@@ -159,12 +195,10 @@ class _TypingViewState extends ConsumerState<TypingView> {
     _focusNode.unfocus();
 
     final result = TypingResult.fromEngine(engine);
-    final history = ref.read(typingHistoryProvider).valueOrNull ?? [];
-    final sameConfig = history.where((r) =>
-        r.config.mode == result.config.mode &&
-        r.config.amount == result.config.amount &&
-        r.config.punctuation == result.config.punctuation &&
-        r.config.numbers == result.config.numbers);
+    final history = ref.read(userHistoryProvider).valueOrNull?.typing ??
+        ref.read(typingHistoryProvider).valueOrNull ??
+        [];
+    final sameConfig = history.where((r) => r.config.isSameAs(result.config));
     setState(() {
       _result = result;
       _previousBest = sameConfig.isEmpty
@@ -175,7 +209,13 @@ class _TypingViewState extends ConsumerState<TypingView> {
     // Hech narsa terilmagan mashq tarixga yozilmaydi.
     if (result.correctChars + result.incorrectChars == 0) return;
     await TypingStorage.saveResult(result);
-    ref.invalidate(typingHistoryProvider);
+    // Kirgan foydalanuvchi natijasi serverga ham yoziladi; yozilmasa, qurilmada
+    // qoladi va "Natijalarim" sahifasidan keyinroq yuklanadi.
+    final account = ref.read(authProvider);
+    if (account != null) {
+      await AccountService.uploadTypingResult(account.id, result).then((_) {}, onError: (_) {});
+    }
+    if (mounted) invalidateHistory(ref);
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -191,21 +231,22 @@ class _TypingViewState extends ConsumerState<TypingView> {
 
   @override
   Widget build(BuildContext context) {
-    final words = ref.watch(typingWordsProvider);
+    final words = ref.watch(typingWordsProvider(_config.alphabet));
     // Tarix oldindan yuklab qo'yiladi — rekordni aniqlash uchun kerak.
-    ref.watch(typingHistoryProvider);
+    ref.watch(userHistoryProvider);
 
     return words.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(
         child: Text(
-          'So‘zlar to‘plamini yuklab bo‘lmadi',
+          'Sözlar töplamini yuklab bölmadi',
           style: AppText.body(15, color: AppColors.muted),
         ),
       ),
       data: (pool) {
-        if (_pool == null) {
+        if (_poolAlphabet != _config.alphabet || _pool == null) {
           _pool = pool;
+          _poolAlphabet = _config.alphabet;
           if (_configLoaded && _engine == null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _restart();
@@ -275,6 +316,18 @@ class _TypingViewState extends ConsumerState<TypingView> {
     );
   }
 
+  String get _wordsLabel => switch (_config.alphabet) {
+        Alphabet.kirill => 'Ўзбекча сўзлар',
+        Alphabet.yangi => 'Özbekça sözlar',
+        Alphabet.lotin => 'O‘zbekcha so‘zlar',
+      };
+
+  String get _hint => switch (_config.alphabet) {
+        Alphabet.lotin => 'o‘, g‘ uçun istalgan tutuq belgisi qabul qilinadi',
+        Alphabet.yangi => 'ş, ç, ö, ğ — sh, ch, o‘, g‘ deb ham teriş mumkin',
+        Alphabet.kirill => 'kirill klaviatura tartibini yoqing',
+      };
+
   Widget _buildTest(BuildContext context, TypingEngine engine) {
     final fontSize = context.isMobile
         ? 20.0
@@ -297,11 +350,11 @@ class _TypingViewState extends ConsumerState<TypingView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!engine.started)
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
             child: Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: AppBadge(label: 'O‘zbekcha so‘zlar', pulse: true),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: AppBadge(label: _wordsLabel, pulse: true),
             ),
           ),
         Row(
@@ -388,7 +441,7 @@ class _TypingViewState extends ConsumerState<TypingView> {
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          'BOSHLASH UCHUN SHU YERGA BOSING',
+                          'BOŞLAŞ UÇUN ŞU YERGA BOSING',
                           style: AppText.label(color: AppColors.primary),
                         ),
                       ),
@@ -404,14 +457,14 @@ class _TypingViewState extends ConsumerState<TypingView> {
           children: [
             AppIconButton(
               icon: Icons.refresh,
-              tooltip: 'Qayta boshlash',
+              tooltip: 'Qayta boşlaş',
               onPressed: _restart,
             ),
             if (!context.isMobile) ...[
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  'tab — qayta boshlash  ·  o‘, g‘ uchun istalgan tutuq belgisi qabul qilinadi',
+                  'tab — qayta boşlaş  ·  $_hint',
                   style: AppText.mono(11, color: AppColors.muted),
                 ),
               ),
@@ -421,7 +474,7 @@ class _TypingViewState extends ConsumerState<TypingView> {
         if (context.isMobile) ...[
           const SizedBox(height: 4),
           Text(
-            'o‘, g‘ uchun istalgan tutuq belgisi qabul qilinadi',
+            _hint,
             textAlign: TextAlign.center,
             style: AppText.mono(11, color: AppColors.muted),
           ),

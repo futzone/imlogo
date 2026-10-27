@@ -76,6 +76,7 @@ flutter:
   assets:
     - assets/images/
     - assets/words/
+    - assets/translit/
 
   # Landing sahifa (imlogo.uz) bilan bir xil shriftlar. Uchalasi ham
   # o'zgaruvchan (variable) shrift — qalinlik `AppText` orqali beriladi.

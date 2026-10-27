@@ -1,14 +1,15 @@
 import 'package:dication/src/core/config/app_device.dart';
 import 'package:dication/src/core/models/typing_result.dart';
 import 'package:dication/src/core/theme/app_theme.dart';
-import 'package:dication/src/providers/history_provider.dart';
-import 'package:dication/src/providers/typing_provider.dart';
+import 'package:dication/src/providers/account_provider.dart';
+import 'package:dication/src/ui/screens/account/auth_sheet.dart';
 import 'package:dication/src/ui/screens/main_screens/app_header.dart';
 import 'package:dication/src/ui/screens/main_screens/result_card.dart';
 import 'package:dication/src/ui/screens/typing/typing_result_view.dart';
 import 'package:dication/src/ui/widgets/app_badge.dart';
 import 'package:dication/src/ui/widgets/app_card.dart';
 import 'package:dication/src/ui/widgets/app_scaffold.dart';
+import 'package:dication/src/ui/widgets/app_ui.dart';
 import 'package:dication/src/ui/widgets/stat_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -36,6 +37,10 @@ class _ResultsPageState extends ConsumerState<ResultsPage> {
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(gutter, 16, gutter, 0),
+            child: const _SyncNotice(),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(gutter, 16, gutter, 0),
             child: GlassBar(
               padding: const EdgeInsets.all(6),
               child: SectionTabs(
@@ -60,12 +65,13 @@ class _ResultsPageState extends ConsumerState<ResultsPage> {
   }
 
   Widget _buildDictations(double gutter) {
-    return ref.watch(historyProvider).when(
+    return ref.watch(userHistoryProvider).when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stackTrace) => _Empty(text: "$error"),
-          data: (works) {
+          data: (history) {
+            final works = history.works;
             if (works.isEmpty) {
-              return const _Empty(text: "Sizda topshirilgan diktantlar yo'q");
+              return const _Empty(text: "Sizda topşirilgan diktantlar yöq");
             }
 
             return ListView.builder(
@@ -80,13 +86,14 @@ class _ResultsPageState extends ConsumerState<ResultsPage> {
   }
 
   Widget _buildTyping(double gutter) {
-    return ref.watch(typingHistoryProvider).when(
+    return ref.watch(userHistoryProvider).when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stackTrace) => _Empty(text: "$error"),
-          data: (results) {
+          data: (history) {
+            final results = history.typing;
             if (results.isEmpty) {
               return const _Empty(
-                text: "Hali tez yozish mashqini bajarmagansiz",
+                text: "Hali tez yoziş maşqini bajarmagansiz",
               );
             }
 
@@ -106,20 +113,20 @@ class _ResultsPageState extends ConsumerState<ResultsPage> {
                     runSpacing: 12,
                     children: [
                       StatTile(
-                        label: 'Eng yaxshi (WPM)',
+                        label: 'Eng yaxşi (WPM)',
                         value: best.round().toString(),
                         valueColor: AppColors.primary,
                       ),
                       StatTile(
-                        label: 'O‘rtacha (WPM)',
+                        label: 'Örtaça (WPM)',
                         value: average.round().toString(),
                       ),
                       StatTile(
-                        label: 'O‘rtacha aniqlik',
+                        label: 'Örtaça aniqlik',
                         value: '${accuracy.round()}%',
                       ),
                       StatTile(
-                        label: 'Mashqlar',
+                        label: 'Maşqlar',
                         value: '${results.length} ta',
                       ),
                     ],
@@ -186,7 +193,8 @@ class _TypingResultCard extends StatelessWidget {
     final config = result.config;
     final flags = [
       config.label,
-      if (config.punctuation) 'tinish belgilari',
+      config.alphabetLabel,
+      if (config.punctuation) 'tiniş belgilari',
       if (config.numbers) 'raqamlar',
     ].join(' · ');
 
@@ -229,6 +237,48 @@ class _TypingResultCard extends StatelessWidget {
           ),
           const Icon(Icons.arrow_forward, size: 18, color: AppColors.primary),
         ],
+      ),
+    );
+  }
+}
+
+/// Hisob holati: mehmonga — natijalar faqat shu qurilmada; kirganga —
+/// hisobga yuklanmagan natijalarni yuklash taklifi.
+class _SyncNotice extends ConsumerStatefulWidget {
+  const _SyncNotice();
+
+  @override
+  ConsumerState<_SyncNotice> createState() => _SyncNoticeState();
+}
+
+class _SyncNoticeState extends ConsumerState<_SyncNotice> {
+  bool _syncing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final account = ref.watch(authProvider);
+    final history = ref.watch(userHistoryProvider).valueOrNull;
+
+    if (account == null) {
+      return NoticeCard(
+        icon: Icons.phone_android,
+        text: 'Natijalar şu qurilmada saqlanadi. Hisobingizga kirsangiz, istalgan qurilmada körasiz.',
+        action: SmallButton(label: 'Kiriş', onPressed: () => AuthSheet.show(context)),
+      );
+    }
+    if (history == null || history.unsyncedCount == 0) return const SizedBox.shrink();
+    return NoticeCard(
+      icon: Icons.cloud_upload_outlined,
+      text: 'Şu qurilmada hisobingizga yuklanmagan ${history.unsyncedCount} ta natija bor.',
+      action: SmallButton(
+        label: _syncing ? 'Yuklanmoqda…' : 'Hisobga yuklaş',
+        onPressed: _syncing
+            ? null
+            : () async {
+                setState(() => _syncing = true);
+                await syncHistory(ref, account.id, history);
+                if (mounted) setState(() => _syncing = false);
+              },
       ),
     );
   }

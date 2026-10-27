@@ -16,7 +16,7 @@ class TypingChart extends StatelessWidget {
     if (samples.length < 2) {
       return Center(
         child: Text(
-          'Grafik uchun mashq juda qisqa bo‘ldi',
+          'Grafik uçun maşq juda qisqa böldi',
           style: AppText.mono(12, color: AppColors.muted),
         ),
       );

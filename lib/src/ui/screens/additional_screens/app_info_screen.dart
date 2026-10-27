@@ -34,7 +34,7 @@ class AppInfoScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              "Ma'lumotlarni yuklashda xatolik",
+              "Ma'lumotlarni yuklaşda xatolik",
               textAlign: TextAlign.center,
               style: AppText.body(14, color: AppColors.muted),
             ),
@@ -93,7 +93,7 @@ class AppInfoScreen extends ConsumerWidget {
               ),
               if (info.telegram != null) ...[
                 Text(
-                  "Loyihaga oid yangiliklardan doimiy xabardor bo‘lish uchun bizning Imlo Go Telegram kanaliga a’zo bo‘ling \u{1F447}",
+                  "Loyihaga oid yangiliklardan doimiy xabardor böliş uçun bizning Imlo Go Telegram kanaliga a’zo böling \u{1F447}",
                   textAlign: TextAlign.center,
                   style: AppText.body(14, color: AppColors.muted),
                 ),

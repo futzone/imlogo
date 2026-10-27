@@ -42,7 +42,8 @@ class TypingResultView extends StatelessWidget {
           runSpacing: 8,
           children: [
             AppBadge(label: config.label),
-            if (config.punctuation) const AppBadge(label: 'tinish belgilari'),
+            AppBadge(label: config.alphabetLabel),
+            if (config.punctuation) const AppBadge(label: 'tiniş belgilari'),
             if (config.numbers) const AppBadge(label: 'raqamlar'),
             if (_isRecord)
               const AppBadge(
@@ -64,7 +65,7 @@ class TypingResultView extends StatelessWidget {
                   result.wpm.round().toString(),
                   style: AppText.mono(big, height: 1),
                 ),
-                label: 'so‘z/daqiqa (WPM)',
+                label: 'söz/daqiqa (WPM)',
               ),
               SizedBox(width: context.isMobile ? 32 : 64),
               _Headline(
@@ -102,12 +103,12 @@ class TypingResultView extends StatelessWidget {
               label: 'Belgilar',
               value:
                   '${result.correctChars}/${result.incorrectChars}/${result.extraChars}/${result.missedChars}',
-              hint: 'to‘g‘ri / xato / ortiqcha / tushib qolgan',
+              hint: 'töğri / xato / ortiqça / tuşib qolgan',
             ),
             StatTile(
               label: 'Barqarorlik',
               value: '${result.consistency.round()}%',
-              hint: 'Tezlik mashq davomida qanchalik bir tekis bo‘lgani',
+              hint: 'Tezlik maşq davomida qançalik bir tekis bölgani',
             ),
             StatTile(
               label: 'Vaqt',
@@ -130,7 +131,7 @@ class TypingResultView extends StatelessWidget {
             children: [
               if (onRestart != null)
                 AppButton(
-                  label: 'Qayta boshlash',
+                  label: 'Qayta boşlaş',
                   icon: Icons.refresh,
                   onPressed: onRestart,
                 ),

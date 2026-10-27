@@ -1,11 +1,11 @@
 {
-    "name": "dication",
-    "short_name": "dication",
+    "name": "Imlo Go",
+    "short_name": "Imlo Go",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Uzbek language dictation app",
+    "description": "Özbekça diktant, tez yoziş va yangi alifbo translatori",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
