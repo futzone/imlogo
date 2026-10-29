@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/adapters.dart';
 
 const appName = "Imlo Go";
-const appVersion = "v1.1.0";
+const appVersion = "v1.1.1";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -93,23 +93,32 @@ class ProfileDetails {
   });
 }
 
-/// Diktantlarda eng ko'p xato qilinadigan so'z.
-class MistakeWord {
+/// Tez yozishda xato qilinadigan so'z (`typing_hard_words` view).
+class HardWord {
   final String word;
 
-  /// Jami xatolar soni.
-  final int mistakes;
-
-  /// Shu so'zda xato qilgan foydalanuvchilar soni.
+  /// Shu so'zda kamida bir marta xato qilgan foydalanuvchilar.
   final int users;
 
-  /// Eng ko'p uchraydigan noto'g'ri yozilishi.
-  final String variant;
+  /// Shu so'zni tergan foydalanuvchilar.
+  final int typists;
+  final int attempts;
+  final int mistakes;
 
-  const MistakeWord({required this.word, required this.mistakes, required this.users, required this.variant});
+  /// Xato ulushi, foizda.
+  final double errorRate;
+
+  const HardWord({
+    required this.word,
+    required this.users,
+    required this.typists,
+    required this.attempts,
+    required this.mistakes,
+    required this.errorRate,
+  });
 }
 
-/// Ochiq profillar, profil rasmi, faollik vaqti va xato so'zlar
+/// Ochiq profillar, profil rasmi, faollik vaqti va tez yozishdagi qiyin so'zlar
 /// (veb-saytdagi `src/lib/app/account.ts` bilan bir xil; server sxemasi —
 /// `imlogo-uz/pocketbase/pb_migrations/1793130000_public_profiles.js`).
 class ProfileService {
@@ -202,17 +211,27 @@ class ProfileService {
     );
   }
 
-  /// Diktantlarda eng ko'p xato qilinadigan so'zlar (`mistake_words` view).
-  static Future<List<MistakeWord>> fetchMistakeWords({int limit = 50}) async {
-    final list =
-        await pb.collection('mistake_words').getList(perPage: limit, sort: '-mistakes,-users', skipTotal: true);
+  /// Kamida shuncha marta terilgan so'zlar "Eng qiyin" ro'yxatiga kiradi.
+  static const hardWordsMinAttempts = 10;
+
+  /// Tez yozishda eng ko'p xato qilinadigan so'zlar: [byRate] bo'lsa — xato
+  /// ulushi bo'yicha, aks holda — eng ko'p odam xato qilgani bo'yicha.
+  static Future<List<HardWord>> fetchHardWords({bool byRate = false, int limit = 50}) async {
+    final list = await pb.collection('typing_hard_words').getList(
+          perPage: limit,
+          sort: byRate ? '-error_rate,-users' : '-users,-error_rate',
+          filter: byRate ? 'attempts >= $hardWordsMinAttempts' : null,
+          skipTotal: true,
+        );
     return [
       for (final item in list.items)
-        MistakeWord(
+        HardWord(
           word: item.get<String>('word'),
-          mistakes: item.get<int>('mistakes'),
           users: item.get<int>('users'),
-          variant: item.get<String>('variant'),
+          typists: item.get<int>('typists'),
+          attempts: item.get<int>('attempts'),
+          mistakes: item.get<int>('mistakes'),
+          errorRate: item.get<double>('error_rate'),
         ),
     ];
   }

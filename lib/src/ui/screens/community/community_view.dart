@@ -119,10 +119,11 @@ final myRankProvider =
   }
 });
 
-/// Diktantlarda eng ko'p xato qilinadigan so'zlar.
-final mistakeWordsProvider = FutureProvider.autoDispose<List<MistakeWord>>((ref) => ProfileService.fetchMistakeWords());
+/// Tez yozishda eng ko'p xato qilinadigan so'zlar (`true` — xato ulushi bo'yicha).
+final hardWordsProvider = FutureProvider.autoDispose
+    .family<List<HardWord>, bool>((ref, byRate) => ProfileService.fetchHardWords(byRate: byRate));
 
-/// "Hamjamiyat": tez yozish va diktant bo'yicha reytinglar, haftalik musobaqa va xato so'zlar.
+/// "Hamjamiyat": tez yozish va diktant bo'yicha reytinglar, haftalik musobaqa va qiyin so'zlar.
 class CommunityView extends ConsumerStatefulWidget {
   const CommunityView({super.key});
 
@@ -133,15 +134,18 @@ class CommunityView extends ConsumerStatefulWidget {
 class _CommunityViewState extends ConsumerState<CommunityView> {
   Board _board = Board.typing;
 
-  /// "Xato so'zlar" yorlig'i tanlangan.
+  /// "Qiyin so'zlar" yorlig'i tanlangan.
   bool _mistakes = false;
+
+  /// Qiyin so'zlar xato ulushi bo'yicha saralangan (aks holda — odamlar soni bo'yicha).
+  bool _hardByRate = false;
   int _metric = 0;
   LeaderboardPeriod _period = LeaderboardPeriod.week;
 
   LeaderboardQuery get _query => (board: _board, period: _period, metric: _metric, limit: 50);
 
   Widget get _tabs => Segmented<String>(
-        options: const {'typing': 'Tez yoziş', 'dictation': 'Diktant', 'mistakes': 'Xato sözlar'},
+        options: const {'typing': 'Tez yoziş', 'dictation': 'Diktant', 'mistakes': 'Qiyin sözlar'},
         value: _mistakes ? 'mistakes' : _board.name,
         onChanged: (tab) => setState(() {
           _mistakes = tab == 'mistakes';
@@ -149,6 +153,8 @@ class _CommunityViewState extends ConsumerState<CommunityView> {
           _metric = 0;
         }),
       );
+
+  void _setHardByRate(bool byRate) => setState(() => _hardByRate = byRate);
 
   @override
   Widget build(BuildContext context) {
@@ -253,18 +259,32 @@ class _CommunityViewState extends ConsumerState<CommunityView> {
 
 extension on _CommunityViewState {
   Widget _buildMistakes() {
-    final words = ref.watch(mistakeWordsProvider);
+    final words = ref.watch(hardWordsProvider(_hardByRate));
     return SectionScroll(
-      onRefresh: () async => ref.invalidate(mistakeWordsProvider),
+      onRefresh: () async => ref.invalidate(hardWordsProvider),
       children: [
         const PageHeading(
           title: 'Hamjamiyat',
-          subtitle: 'Barça foydalanuvçilar diktantlarida eng köp xato yozilgan sözlar.',
+          subtitle: 'Tez yoziş maşqlarida eng köp xato qilinadigan sözlar (xato bosilib, tuzatilgan bölsa ham).',
         ),
         const SizedBox(height: 20),
         Align(alignment: Alignment.centerLeft, child: _tabs),
         const SizedBox(height: 8),
-        Text('Yonida — eng köp uçraydigan notöğri yoziliş.', style: AppText.body(12, color: AppColors.muted)),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Segmented<bool>(
+            options: const {false: 'Eng köp odam', true: 'Eng qiyin'},
+            value: _hardByRate,
+            onChanged: _setHardByRate,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _hardByRate
+              ? 'Xato ulişi eng yuqori sözlar (kamida ${ProfileService.hardWordsMinAttempts} marta terilganlar).'
+              : 'Eng köp foydalanuvçi xato qilgan sözlar.',
+          style: AppText.body(12, color: AppColors.muted),
+        ),
         const SizedBox(height: 16),
         words.when(
           loading: () => const Padding(
@@ -275,16 +295,17 @@ extension on _CommunityViewState {
             icon: Icons.spellcheck,
             color: AppColors.error,
             text: 'Röyxatni yuklab bölmadi. Birozdan söng qayta urinib köring.',
-            action: SmallButton(label: 'Qayta uriniş', onPressed: () => ref.invalidate(mistakeWordsProvider)),
+            action: SmallButton(label: 'Qayta uriniş', onPressed: () => ref.invalidate(hardWordsProvider)),
           ),
           data: (words) => words.isEmpty
-              ? const EmptyState(icon: Icons.spellcheck, text: 'Hali ma’lumot yetarli emas. Diktant yozing!')
+              ? const EmptyState(
+                  icon: Icons.spellcheck, text: 'Hali ma’lumot yetarli emas. Tez yoziş maşqini bajaring!')
               : Column(
                   children: [
                     for (var i = 0; i < words.length; i++)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: MistakeItem(rank: i + 1, word: words[i], top: words.first.mistakes),
+                        child: HardWordItem(rank: i + 1, word: words[i], byRate: _hardByRate, top: words.first),
                       ),
                   ],
                 ),
@@ -294,17 +315,20 @@ extension on _CommunityViewState {
   }
 }
 
-/// Xato so'zlar ro'yxatidagi bitta qator; fondagi chiziq — eng ko'p xatoga nisbatan.
-class MistakeItem extends StatelessWidget {
+/// Qiyin so'zlar ro'yxatidagi bitta qator; fondagi chiziq — birinchi o'rindagiga nisbatan.
+class HardWordItem extends StatelessWidget {
   final int rank;
-  final MistakeWord word;
-  final int top;
+  final HardWord word;
+  final bool byRate;
+  final HardWord top;
 
-  const MistakeItem({super.key, required this.rank, required this.word, required this.top});
+  const HardWordItem({super.key, required this.rank, required this.word, required this.byRate, required this.top});
 
   @override
   Widget build(BuildContext context) {
-    final share = top == 0 ? 0.0 : (word.mistakes / top).clamp(0.04, 1.0);
+    final value = byRate ? word.errorRate : word.users.toDouble();
+    final max = byRate ? top.errorRate : top.users.toDouble();
+    final share = max <= 0 ? 0.0 : (value / max).clamp(0.04, 1.0);
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -333,25 +357,19 @@ class MistakeItem extends StatelessWidget {
                     children: [
                       Text(word.word, style: AppText.heading(18, weight: FontWeight.w600)),
                       const SizedBox(height: 2),
-                      Text.rich(
-                        TextSpan(
-                          style: AppText.mono(11, color: AppColors.muted),
-                          children: [
-                            const TextSpan(text: 'köpinça: '),
-                            TextSpan(
-                              text: word.variant,
-                              style: const TextStyle(color: AppColors.error, decoration: TextDecoration.lineThrough),
-                            ),
-                            TextSpan(text: ' · ${word.users} kişi'),
-                          ],
-                        ),
+                      Text(
+                        '${word.users} / ${word.typists} kişi xato qilgan · ${word.mistakes} / ${word.attempts} uriniş',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        style: AppText.mono(11, color: AppColors.muted),
                       ),
                     ],
                   ),
                 ),
-                Text('${word.mistakes} ta', style: AppText.mono(17, color: AppColors.error)),
+                Text(
+                  byRate ? '${word.errorRate.round()}%' : '${word.users} kişi',
+                  style: AppText.mono(17, color: AppColors.error),
+                ),
               ],
             ),
           ),
