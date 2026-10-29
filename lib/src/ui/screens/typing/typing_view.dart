@@ -5,9 +5,12 @@ import 'package:dication/src/core/config/app_router.dart';
 import 'package:dication/src/core/models/typing_result.dart';
 import 'package:dication/src/core/theme/app_theme.dart';
 import 'package:dication/src/core/translit/translit.dart';
-import 'package:dication/src/core/typing/typing_compose.dart';
 import 'package:dication/src/core/typing/typing_config.dart';
 import 'package:dication/src/core/typing/typing_engine.dart';
+import 'package:dication/src/core/typing/typing_guard.dart';
+import 'package:dication/src/core/typing/typing_input.dart';
+import 'package:dication/src/core/typing/typing_input_guard.dart';
+import 'package:dication/src/core/typing/typing_replay.dart';
 import 'package:dication/src/core/typing/typing_words.dart';
 import 'package:dication/src/core/services/account_service.dart';
 import 'package:dication/src/providers/account_provider.dart';
@@ -49,14 +52,28 @@ class _TypingViewState extends ConsumerState<TypingView> {
   bool _configLoaded = false;
   List<String>? _pool;
 
-  /// [_pool] qaysi yozuvdagi so'zlar.
-  Alphabet? _poolAlphabet;
+  /// [_pool] qaysi to'plam: yozuv va so'zlar/gaplar (qarang: [_poolKeyOf]).
+  String? _poolKey;
 
-  /// Yangi alifbo: "s" terilib, "h" kutilayotgan harf o'rni (qarang: [composeYangi]).
-  int? _pending;
+  /// Script bilan yozishga to'siqlar (qarang: [TypingInputGuard]).
+  final TypingInputGuard _guard = TypingInputGuard();
+
+  TypingInputState _inputState = TypingInputState();
+
+  /// Bosishlar logi: server natijani shundan qayta hisoblaydi (qarang: [replayTypingLog]).
+  List<TypingLogEntry> _log = [];
+
+  /// Server bergan mashq (kirgan foydalanuvchi uchun); `null` — mashq qurilmada yaratilgan.
+  String? _testId;
+
+  /// Eskirgan so'rov javobi yangi mashqni almashtirib yubormasligi uchun.
+  int _restartId = 0;
   TypingEngine? _engine;
   TypingResult? _result;
   double? _previousBest;
+
+  /// Natija ostidagi izoh: nega reytingga yoki rekordga kirmadi.
+  String? _notice;
 
   @override
   void initState() {
@@ -88,36 +105,71 @@ class _TypingViewState extends ConsumerState<TypingView> {
   @override
   void dispose() {
     _timer?.cancel();
+    _guard.dispose();
     _focusNode.dispose();
     _input.dispose();
     super.dispose();
   }
+
+  /// Bir xil kalitli sozlamalar bitta so'zlar to'plamidan foydalanadi.
+  static String _poolKeyOf(TypingConfig config) =>
+      '${config.alphabet.name}:${config.mode == TypingMode.sentences ? 'gaplar' : 'sözlar'}';
 
   void _restart({bool focus = true}) {
     _timer?.cancel();
     _watch
       ..stop()
       ..reset();
-    _pending = null;
-    final pool = _poolAlphabet == _config.alphabet ? _pool : null;
+    final restartId = ++_restartId;
+    _inputState = TypingInputState();
+    _log = [];
+    _testId = null;
+    _guard.reset();
+    final pool = _poolKey == _poolKeyOf(_config) ? _pool : null;
+    if (pool == null || pool.isEmpty || !_configLoaded) return;
+    final config = _config.effective;
+
+    void startWith(TypingEngine engine) {
+      setState(() {
+        _result = null;
+        _previousBest = null;
+        _notice = null;
+        _engine = engine;
+      });
+      _syncInput();
+      if (focus && widget.active) _focusNode.requestFocus();
+    }
+
+    void startLocal() => startWith(config.mode == TypingMode.sentences
+        ? TypingEngine(config: config, fixedWords: createSentenceWords(pool, config.amount))
+        : TypingEngine(config: config, nextWord: TypingWordGenerator(pool: pool, config: config).next));
+
+    if (ref.read(authProvider) == null) {
+      startLocal();
+      return;
+    }
+    // Kirgan foydalanuvchi uchun so'zlarni server beradi — natija reytingga kirishi uchun.
+    // Server javob bermasa, mashq qurilmada davom etadi (natija reytingga kirmaydi).
     setState(() {
       _result = null;
-      _previousBest = null;
-      if (pool != null && pool.isNotEmpty && _configLoaded) {
-        final generator = TypingWordGenerator(pool: pool, config: _config);
-        _engine = TypingEngine(config: _config, nextWord: generator.next);
-      }
+      _notice = null;
+      _engine = null;
     });
-    _syncInput();
-    if (focus && widget.active) _focusNode.requestFocus();
+    AccountService.startTypingTest(config).then((test) {
+      if (!mounted || restartId != _restartId) return;
+      _testId = test.id;
+      startWith(TypingEngine(config: config, fixedWords: test.words));
+    }, onError: (_) {
+      if (mounted && restartId == _restartId) startLocal();
+    });
   }
 
   void _changeConfig(TypingConfig config) {
-    final alphabetChanged = config.alphabet != _config.alphabet;
+    final poolChanged = _poolKeyOf(config) != _poolKeyOf(_config);
     _config = config;
     TypingStorage.saveConfig(config);
-    if (alphabetChanged) {
-      // Yangi yozuvdagi so'zlar yuklangach `build` mashqni qayta boshlaydi.
+    if (poolChanged) {
+      // Yangi to'plam yuklangach `build` mashqni qayta boshlaydi.
       _timer?.cancel();
       _watch
         ..stop()
@@ -144,33 +196,30 @@ class _TypingViewState extends ConsumerState<TypingView> {
 
   void _onInputChanged(String value) {
     final engine = _engine;
-    if (engine == null || engine.finished) return;
-    final elapsed = _watch.elapsed;
-
-    if (!value.startsWith(_sentinel)) {
-      _pending = null;
-      engine.backToPreviousWord();
-    } else {
-      final text = value.substring(_sentinel.length);
-      final space = text.indexOf(RegExp(r'\s'));
-      var word = space >= 0 ? text.substring(0, space) : text;
-      if (engine.config.alphabet == Alphabet.yangi) {
-        final composed = composeYangi(
-          engine.current,
-          word,
-          engine.target,
-          _pending,
-          finalize: space >= 0,
-        );
-        word = composed.value;
-        _pending = composed.pending;
-      }
-      engine.setCurrent(word, elapsed: elapsed);
-      if (space >= 0) {
-        _pending = null;
-        engine.commitWord(elapsed: elapsed);
-      }
+    if (engine == null || engine.finished || engine.outOfWords) return;
+    // Server bilan bir xil: mashq boshidan beri ms, 0.1 gacha yaxlitlangan.
+    final t = _watch.isRunning ? (_watch.elapsedMicroseconds / 100).round() / 10 : 0.0;
+    final composing = _input.value.composing.isValid;
+    final added = value.length - (_sentinel.length + engine.current.length);
+    if (!_guard.accept(added, composing: composing)) {
+      // Qo'yilgan yoki script yozgan matn — maydon avvalgi holatiga qaytadi.
+      _syncInput();
+      return;
     }
+
+    // Logga aynan dvigatelga berilgan qiymat yoziladi — server uni qayta o'ynaydi.
+    final text = value.startsWith(_sentinel) ? value.substring(_sentinel.length) : null;
+    _log.add(TypingLogEntry(
+      t: t,
+      v: text,
+      it: composing
+          ? 'insertCompositionText'
+          : added > 0
+              ? 'insertText'
+              : 'deleteContentBackward',
+      k: _guard.takeKey(),
+    ));
+    applyTypingValue(engine, _inputState, text, Duration(microseconds: (t * 1000).round()));
 
     if (engine.started && !_watch.isRunning && !engine.finished) {
       _watch.start();
@@ -187,6 +236,21 @@ class _TypingViewState extends ConsumerState<TypingView> {
     engine.finished ? _finish() : setState(() {});
   }
 
+  /// Natijani ko'rsatadi: shubhali natija "yangi rekord" bo'lmaydi va izoh oladi.
+  void _show(TypingResult result, {required bool signedIn}) {
+    final history = ref.read(userHistoryProvider).valueOrNull?.typing ??
+        ref.read(typingHistoryProvider).valueOrNull ??
+        [];
+    final best = TypingResult.bestWpm(
+      history.where((r) => r.config.isSameAs(result.config) && r.id != result.id),
+    );
+    setState(() {
+      _result = result;
+      _previousBest = result.isTrusted ? best : null;
+      _notice = result.isTrusted ? null : typingFlagNotice(result.flags, signedIn: signedIn);
+    });
+  }
+
   Future<void> _finish() async {
     final engine = _engine;
     if (engine == null || _result != null) return;
@@ -194,25 +258,38 @@ class _TypingViewState extends ConsumerState<TypingView> {
     _watch.stop();
     _focusNode.unfocus();
 
-    final result = TypingResult.fromEngine(engine);
-    final history = ref.read(userHistoryProvider).valueOrNull?.typing ??
-        ref.read(typingHistoryProvider).valueOrNull ??
-        [];
-    final sameConfig = history.where((r) => r.config.isSameAs(result.config));
-    setState(() {
-      _result = result;
-      _previousBest = sameConfig.isEmpty
-          ? null
-          : sameConfig.map((r) => r.wpm).reduce((a, b) => a > b ? a : b);
-    });
+    final account = ref.read(authProvider);
+    final log = _log;
+    final testId = _testId;
+    final restartId = _restartId;
+    // Ilova ham natijani server bilan bir xil evristikalar bo'yicha darhol tekshiradi.
+    final local = TypingResult.fromEngine(engine);
+    final replay = replayTypingLog(engine.config, engine.words, log);
+    final flags = analyzeTyping(replay.events, local.wpm);
+    if (account != null && testId == null) flags.add('unverified');
+    final result = local.withFlags(flags);
+    _show(result, signedIn: account != null);
 
     // Hech narsa terilmagan mashq tarixga yozilmaydi.
     if (result.correctChars + result.incorrectChars == 0) return;
     await TypingStorage.saveResult(result);
-    // Kirgan foydalanuvchi natijasi serverga ham yoziladi; yozilmasa, qurilmada
-    // qoladi va "Natijalarim" sahifasidan keyinroq yuklanadi.
-    final account = ref.read(authProvider);
-    if (account != null) {
+
+    if (account != null && testId != null) {
+      // Server natijani logdan qayta hisoblaydi va reytingga kiritish-kiritmasligini hal qiladi.
+      try {
+        final verdict = await AccountService.submitTypingTest(testId, result.id, log);
+        await TypingStorage.saveResult(verdict.result);
+        if (mounted && restartId == _restartId) _show(verdict.result, signedIn: true);
+      } catch (_) {
+        // Yuborilmadi — natija tarixga oddiy usulda yoziladi (reytingga kirmaydi).
+        final unverified = result.withFlags([...flags, 'unverified']);
+        await TypingStorage.saveResult(unverified);
+        if (mounted && restartId == _restartId) _show(unverified, signedIn: true);
+        await AccountService.uploadTypingResult(account.id, unverified).then((_) {}, onError: (_) {});
+      }
+    } else if (account != null) {
+      // Kirgan foydalanuvchi natijasi serverga ham yoziladi; yozilmasa, qurilmada
+      // qoladi va "Natijalarim" sahifasidan keyinroq yuklanadi.
       await AccountService.uploadTypingResult(account.id, result).then((_) {}, onError: (_) {});
     }
     if (mounted) invalidateHistory(ref);
@@ -231,9 +308,17 @@ class _TypingViewState extends ConsumerState<TypingView> {
 
   @override
   Widget build(BuildContext context) {
-    final words = ref.watch(typingWordsProvider(_config.alphabet));
+    final words = _config.mode == TypingMode.sentences
+        ? ref.watch(typingSentencesProvider(_config.alphabet))
+        : ref.watch(typingWordsProvider(_config.alphabet));
     // Tarix oldindan yuklab qo'yiladi — rekordni aniqlash uchun kerak.
     ref.watch(userHistoryProvider);
+    // Kirish/chiqishdan keyin boshlanmagan mashq qayta yaratiladi: kirgan foydalanuvchi
+    // so'zlarni serverdan oladi (aks holda natija reytingga kirmaydi).
+    ref.listen(authProvider, (previous, next) {
+      if (previous?.id == next?.id || _result != null || _engine?.started == true) return;
+      _restart(focus: false);
+    });
 
     return words.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -244,9 +329,9 @@ class _TypingViewState extends ConsumerState<TypingView> {
         ),
       ),
       data: (pool) {
-        if (_poolAlphabet != _config.alphabet || _pool == null) {
+        if (_poolKey != _poolKeyOf(_config) || _pool == null) {
           _pool = pool;
-          _poolAlphabet = _config.alphabet;
+          _poolKey = _poolKeyOf(_config);
           if (_configLoaded && _engine == null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _restart();
@@ -298,6 +383,7 @@ class _TypingViewState extends ConsumerState<TypingView> {
                             child: TypingResultView(
                               result: _result!,
                               previousBest: _previousBest,
+                              notice: _notice,
                               onRestart: _restart,
                               onOpenHistory: () => AppRouter.go(
                                 context,
@@ -396,27 +482,39 @@ class _TypingViewState extends ConsumerState<TypingView> {
                 height: 1,
                 child: Opacity(
                   opacity: 0,
-                  child: TextField(
-                    controller: _input,
-                    focusNode: _focusNode,
-                    onChanged: _onInputChanged,
-                    autofocus: widget.active,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    enableInteractiveSelection: false,
-                    showCursor: false,
-                    smartDashesType: SmartDashesType.disabled,
-                    smartQuotesType: SmartQuotesType.disabled,
-                    textCapitalization: TextCapitalization.none,
-                    // Android klaviaturasi so'zni "taxmin qilib" o'zgartirmasligi uchun.
-                    keyboardType: defaultTargetPlatform == TargetPlatform.android
-                        ? TextInputType.visiblePassword
-                        : TextInputType.text,
-                    textInputAction: TextInputAction.none,
-                    maxLines: 1,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isCollapsed: true,
+                  // Qo'yish (Ctrl/Cmd+V) o'chirilgan — matn faqat klaviaturadan teriladi.
+                  child: Shortcuts(
+                    shortcuts: const {
+                      SingleActivator(LogicalKeyboardKey.keyV, control: true):
+                          DoNothingAndStopPropagationTextIntent(),
+                      SingleActivator(LogicalKeyboardKey.keyV, meta: true):
+                          DoNothingAndStopPropagationTextIntent(),
+                      SingleActivator(LogicalKeyboardKey.insert, shift: true):
+                          DoNothingAndStopPropagationTextIntent(),
+                    },
+                    child: TextField(
+                      controller: _input,
+                      focusNode: _focusNode,
+                      onChanged: _onInputChanged,
+                      autofocus: widget.active,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      enableInteractiveSelection: false,
+                      showCursor: false,
+                      smartDashesType: SmartDashesType.disabled,
+                      smartQuotesType: SmartQuotesType.disabled,
+                      textCapitalization: TextCapitalization.none,
+                      // Android klaviaturasi so'zni "taxmin qilib" o'zgartirmasligi uchun.
+                      keyboardType:
+                          defaultTargetPlatform == TargetPlatform.android
+                              ? TextInputType.visiblePassword
+                              : TextInputType.text,
+                      textInputAction: TextInputAction.none,
+                      maxLines: 1,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isCollapsed: true,
+                      ),
                     ),
                   ),
                 ),

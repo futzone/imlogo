@@ -1,10 +1,30 @@
 import 'package:dication/src/core/models/typing_result.dart';
 import 'package:dication/src/core/models/work.dart';
 import 'package:dication/src/core/services/pb_client.dart';
+import 'package:dication/src/core/services/profile_service.dart';
 import 'package:dication/src/core/typing/typing_config.dart';
 import 'package:dication/src/core/typing/typing_engine.dart';
+import 'package:dication/src/core/typing/typing_guard.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// Server bergan mashq: identifikator va so'zlar.
+class TypingTest {
+  final String id;
+  final List<String> words;
+
+  const TypingTest({required this.id, required this.words});
+}
+
+/// Server qayta hisoblagan natija.
+class TypingVerdict {
+  final TypingResult result;
+
+  /// Natija reytingga kirdimi.
+  final bool ranked;
+
+  const TypingVerdict({required this.result, required this.ranked});
+}
 
 /// Hisob (ixtiyoriy): kirish, natijalarni serverda saqlash, umumiy reyting
 /// va murojaatlar. Veb-saytdagi `src/lib/app/account.ts` bilan bir xil server
@@ -64,6 +84,7 @@ String accountErrorMessage(Object error) {
   if (fields['password'] != null) return 'Parol kamida 8 ta belgidan iborat bölişi kerak';
   if (fields['oldPassword'] != null) return 'Joriy parol notöğri';
   if (fields['name'] != null) return 'Ism juda uzun';
+  if (fields['avatar'] != null) return 'Rasm 2 MB dan kiçik JPG, PNG yoki WEBP bölişi kerak';
   if (error.statusCode == 400 && (error.url?.path.contains('auth-with-password') ?? false)) {
     return 'Email yoki parol notöğri';
   }
@@ -162,6 +183,42 @@ class AccountService {
         for (final s in (data['samples'] as List? ?? const []))
           if (s is List && s.length >= 4) TypingSample.fromJson(s),
       ],
+      flags: [for (final flag in (data['flag_reasons'] as List? ?? const [])) flag.toString()],
+    );
+  }
+
+  /// Server tekshiradigan mashq: so'zlarni server beradi, natijani esa bosishlar
+  /// logidan o'zi hisoblaydi (`imlogo-uz/pocketbase/pb_hooks/typing_api.pb.js`).
+  /// Faqat shunday natijalar reytingga kiradi; [uploadTypingResult] orqali
+  /// yuklangani (kirishdan oldingi yoki yuborilmay qolgan natijalar) faqat tarixda saqlanadi.
+  static Future<TypingTest> startTypingTest(TypingConfig config) async {
+    final json = await pb.send<Map<String, dynamic>>(
+      '/api/imlogo/typing/start',
+      method: 'POST',
+      body: config.toJson(),
+    );
+    return TypingTest(
+      id: json['id'] as String,
+      words: [for (final word in json['words'] as List) word as String],
+    );
+  }
+
+  /// Natijani server qayta hisoblaydi va reytingga kiritish-kiritmasligini hal qiladi.
+  static Future<TypingVerdict> submitTypingTest(String testId, String localId, List<TypingLogEntry> log) async {
+    final json = await pb.send<Map<String, dynamic>>(
+      '/api/imlogo/typing/submit',
+      method: 'POST',
+      body: {
+        'testId': testId,
+        'localId': localId,
+        'log': [for (final entry in log) entry.toJson()],
+      },
+    );
+    final record = RecordModel.fromJson(Map<String, dynamic>.from(json['record'] as Map));
+    final flags = [for (final flag in (json['flags'] as List? ?? const [])) flag.toString()];
+    return TypingVerdict(
+      result: _typingFromRecord(record).withFlags(flags),
+      ranked: json['ranked'] == true,
     );
   }
 
@@ -298,6 +355,9 @@ class LeaderRow {
     final name = record.get<String>('name').trim();
     return LeaderRow(id: record.id, name: name.isEmpty ? 'Foydalanuvçi' : name, data: record.data);
   }
+
+  /// Profil rasmi (reyting view'idagi `avatar` ustunidan).
+  String? get avatarUrl => avatarUrlFor(id, data['avatar'] is String ? data['avatar'] as String : '');
 
   /// Serverdan kelgan qiymat bo'lmasligi ham mumkin — 0 deb olinadi.
   double value(String key) {

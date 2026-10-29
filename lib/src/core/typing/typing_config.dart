@@ -1,11 +1,13 @@
 import 'package:dication/src/core/translit/translit.dart';
 
-enum TypingMode { time, words }
+/// `sentences` — tasodifiy tanlangan tayyor gaplar ketma-ketligi.
+enum TypingMode { time, words, sentences }
 
 class TypingConfig {
   final TypingMode mode;
 
-  /// `time` rejimida — soniyalar, `words` rejimida — so'zlar soni.
+  /// `time` rejimida — soniyalar, `words` rejimida — so'zlar, `sentences`
+  /// rejimida — gaplar soni.
   final int amount;
   final bool punctuation;
   final bool numbers;
@@ -23,6 +25,7 @@ class TypingConfig {
 
   static const List<int> timeOptions = [15, 30, 60, 120];
   static const List<int> wordOptions = [10, 25, 50, 100];
+  static const List<int> sentenceOptions = [3, 5, 10, 20];
 
   /// Sozlamalar panelidagi yozuv tanlovi.
   static const Map<Alphabet, String> alphabetOptions = {
@@ -37,7 +40,19 @@ class TypingConfig {
     Alphabet.kirill: 'kirill',
   };
 
-  List<int> get options => mode == TypingMode.time ? timeOptions : wordOptions;
+  List<int> get options => switch (mode) {
+        TypingMode.time => timeOptions,
+        TypingMode.words => wordOptions,
+        TypingMode.sentences => sentenceOptions,
+      };
+
+  /// Gaplarda tinish belgilari va raqamlar o'zi bor, shuning uchun bu rejimda
+  /// qo'shimchalar hisobga olinmaydi (sozlamada esa boshqa rejimlar uchun saqlanadi).
+  bool get hasExtras => mode != TypingMode.sentences;
+
+  /// Mashqda haqiqatda ishlatiladigan sozlama.
+  TypingConfig get effective =>
+      hasExtras ? this : copyWith(punctuation: false, numbers: false);
 
   TypingConfig copyWith({
     TypingMode? mode,
@@ -60,11 +75,19 @@ class TypingConfig {
     if (newMode == mode) return this;
     return copyWith(
       mode: newMode,
-      amount: newMode == TypingMode.time ? 30 : 25,
+      amount: switch (newMode) {
+        TypingMode.time => 30,
+        TypingMode.words => 25,
+        TypingMode.sentences => 5,
+      },
     );
   }
 
-  String get label => mode == TypingMode.time ? '$amount soniya' : '$amount söz';
+  String get label => switch (mode) {
+        TypingMode.time => '$amount soniya',
+        TypingMode.words => '$amount söz',
+        TypingMode.sentences => '$amount gap',
+      };
 
   String get alphabetLabel => _alphabetLabels[alphabet]!;
 
@@ -86,7 +109,11 @@ class TypingConfig {
   /// Saqlangan (ishonchsiz) qiymatdan sozlamani tiklaydi — server yozuvidan ham.
   factory TypingConfig.fromJson(Map<String, dynamic> json) {
     return TypingConfig(
-      mode: json['mode'] == 'words' ? TypingMode.words : TypingMode.time,
+      mode: switch (json['mode']) {
+        'words' => TypingMode.words,
+        'sentences' => TypingMode.sentences,
+        _ => TypingMode.time,
+      },
       amount: json['amount'] is num ? (json['amount'] as num).toInt() : 30,
       punctuation: json['punctuation'] == true,
       numbers: json['numbers'] == true,

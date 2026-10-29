@@ -14,6 +14,9 @@ class TypingResultView extends StatelessWidget {
 
   /// Shu sozlamadagi avvalgi eng yaxshi natija (bo'lmasa `null`).
   final double? previousBest;
+
+  /// Natija ostidagi ogohlantirish (masalan, saqlanmagani haqida).
+  final String? notice;
   final VoidCallback? onRestart;
   final VoidCallback? onOpenHistory;
 
@@ -21,6 +24,7 @@ class TypingResultView extends StatelessWidget {
     super.key,
     required this.result,
     this.previousBest,
+    this.notice,
     this.onRestart,
     this.onOpenHistory,
   });
@@ -78,6 +82,22 @@ class TypingResultView extends StatelessWidget {
             ],
           ),
         ),
+        if (notice != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              notice!,
+              textAlign: TextAlign.center,
+              style: AppText.body(14, color: AppColors.errorDeep),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         AppCard(
           corners: true,

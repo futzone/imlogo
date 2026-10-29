@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:dication/src/core/typing/typing_config.dart';
 import 'package:dication/src/core/typing/typing_engine.dart';
+import 'package:dication/src/core/typing/typing_guard.dart';
 import 'package:dication/src/core/typing/typing_text.dart';
 import 'package:dication/src/core/typing/typing_words.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -156,6 +157,99 @@ void main() {
         }
       }
       expect(words.any((w) => w.endsWith(',')), isTrue);
+    });
+
+    test('taymer kechiksa ham bosishlar kesimlardan yo‘qolmaydi', () {
+      final engine = engineFor(['salom', 'dunyo']);
+      // Taymer umuman ishlamadi: kesimlar faqat bosishlarda yoziladi.
+      for (var i = 1; i <= 5; i++) {
+        engine.setCurrent('salom'.substring(0, i), elapsed: Duration(milliseconds: i * 400));
+      }
+      engine.commitWord(elapsed: const Duration(milliseconds: 2400));
+      for (var i = 1; i <= 5; i++) {
+        engine.setCurrent('dunyo'.substring(0, i), elapsed: Duration(milliseconds: 2400 + i * 400));
+      }
+      expect(engine.finished, isTrue);
+      final sampled = engine.samples.fold<double>(0, (sum, s) => sum + s.raw / 12);
+      // 11 bosishdan faqat oxirgi to'liq bo'lmagan soniyadagilar kesimga tushmaydi.
+      expect(sampled, greaterThanOrEqualTo(9));
+      expect(engine.samples.length, 4);
+    });
+
+    test('vaqt rejimi: vaqt tugagach kechikkan bosishlar hisoblanmaydi', () {
+      final engine = engineFor(['salom'], mode: TypingMode.time, amount: 15);
+      type(engine, 'sa');
+      engine.setCurrent('sal', elapsed: const Duration(seconds: 16));
+      expect(engine.finished, isTrue);
+      expect(engine.finishedAt, const Duration(seconds: 15));
+      expect(engine.current, 'sa');
+    });
+  });
+
+  group('gaplar rejimi', () {
+    const config = TypingConfig(mode: TypingMode.sentences, amount: 2, punctuation: true, numbers: true);
+
+    test('tayyor so‘zlar terilgach mashq yakunlanadi', () {
+      final engine = TypingEngine(config: config.effective, fixedWords: ['Salom', 'dunyo.', 'Yaxshi.']);
+      expect(engine.words, ['Salom', 'dunyo.', 'Yaxshi.']);
+      type(engine, 'Salom');
+      engine.commitWord();
+      type(engine, 'dunyo.');
+      engine.commitWord();
+      expect(engine.finished, isFalse);
+      type(engine, 'Yaxshi.');
+      expect(engine.finished, isTrue);
+      expect(engine.words.length, 3, reason: 'so‘zlar qo‘shilmaydi');
+    });
+
+    test('qo‘shimchalar hisobga olinmaydi, sozlama esa saqlanadi', () {
+      expect(config.hasExtras, isFalse);
+      expect(config.effective.punctuation, isFalse);
+      expect(config.effective.numbers, isFalse);
+      expect(config.withMode(TypingMode.time).punctuation, isTrue);
+      expect(config.withMode(TypingMode.words).withMode(TypingMode.sentences).amount, 5);
+      expect(config.label, '2 gap');
+      expect(TypingConfig.fromJson(config.toJson()).mode, TypingMode.sentences);
+    });
+
+    test('gaplar ro‘yxati o‘qiladi va so‘zlarga ajratiladi', () {
+      final pool = parseSentenceList("# izoh\nBu bogʻ.\n\nMen keldim!\n");
+      expect(pool, ["Bu bog'.", 'Men keldim!']);
+      final words = createSentenceWords(pool, 3, random: Random(3));
+      expect(words.where((w) => RegExp(r'[.!]$').hasMatch(w)).length, 3);
+    });
+  });
+
+  group('avtomatik yozishni aniqlash (analyzeTyping)', () {
+    final random = Random(4);
+    List<TypingInputEvent> keyed(List<double> times, {int added = 1, String it = 'insertText', bool keys = true}) =>
+        [for (final t in times) TypingInputEvent(t: t, added: added, it: it, keyed: keys)];
+
+    test('bir maromdagi yozish aniqlanadi', () {
+      expect(analyzeTyping(keyed([for (var i = 0; i < 40; i++) i * 100.0]), 60), contains('uniform_rhythm'));
+      expect(
+        analyzeTyping(keyed([for (var i = 0; i < 40; i++) i * 150.0 + random.nextInt(5)]), 60),
+        contains('uniform_rhythm'),
+      );
+    });
+
+    test('odam yozishi va qisqa mashq to‘xtatilmaydi', () {
+      var t = 0.0;
+      final human = [for (var i = 0; i < 60; i++) t += 80 + random.nextInt(300)];
+      expect(analyzeTyping(keyed(human), 60), isEmpty);
+      expect(analyzeTyping(keyed([for (var i = 0; i < 10; i++) i * 100.0]), 60), isEmpty);
+    });
+
+    test('bir zumda kiritish, ko‘p belgili insertText va klavishsiz yozish', () {
+      expect(analyzeTyping(keyed([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), 60), contains('burst'));
+      expect(analyzeTyping([TypingInputEvent(t: 0, added: 6, it: 'insertText', keyed: true)], 60),
+          contains('multi_insert'));
+      expect(analyzeTyping([TypingInputEvent(t: 0, added: 3, it: 'insertCompositionText', keyed: true)], 60),
+          isNot(contains('multi_insert')));
+      var t = 0.0;
+      final times = [for (var i = 0; i < 30; i++) t += 80 + random.nextInt(300)];
+      expect(analyzeTyping(keyed(times, keys: false), 60), contains('no_keydown'));
+      expect(analyzeTyping(keyed(times), 300), contains('wpm'));
     });
   });
 }

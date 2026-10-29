@@ -64,7 +64,7 @@ class TypingEngine {
   static const int _timeModeBuffer = 60;
 
   final TypingConfig config;
-  final String Function() _nextWord;
+  final String Function()? _nextWord;
 
   final List<String> words = [];
   final List<String> typed = [];
@@ -80,21 +80,37 @@ class TypingEngine {
   int _secondKeys = 0;
   int _secondErrors = 0;
 
-  TypingEngine({required this.config, required String Function() nextWord})
-      : _nextWord = nextWord {
+  /// [nextWord] — so'z beruvchi funksiya (vaqt va so'zlar rejimi) yoki
+  /// [fixedWords] — tayyor so'zlar ro'yxati (gaplar rejimi: mashq shu so'zlar
+  /// terilganda tugaydi).
+  TypingEngine({
+    required this.config,
+    String Function()? nextWord,
+    List<String>? fixedWords,
+  })  : assert((nextWord == null) != (fixedWords == null)),
+        _nextWord = nextWord {
+    if (fixedWords != null) words.addAll(fixedWords);
     _fill();
   }
+
+  /// Mashq so'zlar soni bilan cheklangan (vaqt rejimidan tashqari hammasi).
+  bool get _fixedLength => config.mode != TypingMode.time;
 
   int get index => typed.length;
 
   String get target => words[index];
 
+  /// So'zlar tugadimi (vaqt rejimida tayyor ro'yxat odam uchun imkonsiz tezlikda tugashi mumkin).
+  bool get outOfWords => index >= words.length;
+
   void _fill() {
+    final nextWord = _nextWord;
+    if (nextWord == null) return;
     final wanted = config.mode == TypingMode.words
         ? config.amount
         : typed.length + _timeModeBuffer;
     while (words.length < wanted) {
-      words.add(_nextWord());
+      words.add(nextWord());
     }
   }
 
@@ -113,6 +129,9 @@ class TypingEngine {
   /// belgi klavish bosilishi sifatida hisoblanadi.
   void setCurrent(String value, {Duration elapsed = Duration.zero}) {
     if (finished) return;
+    _sampleUntil(elapsed);
+    _checkTime(elapsed);
+    if (finished) return;
     value = value.replaceAll(RegExp(r'\s'), '');
     final limit = target.length + maxExtraChars;
     if (value.length > limit) value = value.substring(0, limit);
@@ -129,9 +148,8 @@ class TypingEngine {
     }
     current = value;
 
-    // So'zlar rejimida oxirgi so'z to'g'ri terilishi bilan mashq yakunlanadi.
-    final isLastWord =
-        config.mode == TypingMode.words && index == words.length - 1;
+    // So'zlar va gaplar rejimida oxirgi so'z to'g'ri terilishi bilan mashq yakunlanadi.
+    final isLastWord = _fixedLength && index == words.length - 1;
     if (isLastWord && isTypedWordCorrect(current, target)) {
       _commit(elapsed);
     }
@@ -140,6 +158,9 @@ class TypingEngine {
   /// Bo'sh joy: joriy so'zni yakunlab, keyingisiga o'tadi.
   void commitWord({Duration elapsed = Duration.zero}) {
     if (finished || current.isEmpty) return;
+    _sampleUntil(elapsed);
+    _checkTime(elapsed);
+    if (finished) return;
     _keystroke(true);
     _commit(elapsed);
   }
@@ -147,7 +168,7 @@ class TypingEngine {
   void _commit(Duration elapsed) {
     typed.add(current);
     current = '';
-    if (config.mode == TypingMode.words && typed.length >= words.length) {
+    if (_fixedLength && typed.length >= words.length) {
       _finish(elapsed);
     } else {
       _fill();
@@ -164,22 +185,46 @@ class TypingEngine {
     return true;
   }
 
-  /// Har soniyada chaqiriladi: grafik uchun kesim yozadi va vaqt rejimida
+  /// Muntazam chaqiriladi: grafik uchun kesim yozadi va vaqt rejimida
   /// belgilangan vaqt tugagach mashqni yakunlaydi.
   void tick(Duration elapsed) {
     if (!started || finished) return;
-    final second = elapsed.inSeconds;
-    if (second > samples.length) {
+    _sampleUntil(elapsed);
+    _checkTime(elapsed);
+  }
+
+  /// O'tgan soniya kesimini yozadi. Klavish bosilganda ham chaqiriladi: taymer
+  /// kechiksa, bosishlar keyingi soniyaga o'tib ketmasin va so'zlar rejimida
+  /// yakunda yo'qolmasin — server kesimlardagi bosishlar sonini natija bilan
+  /// solishtiradi.
+  ///
+  /// Har bir to'liq soniya uchun alohida kesim soniya chegarasidagi holat
+  /// bo'yicha yoziladi (chaqiruv payti emas) — natija taymerga bog'liq emas va
+  /// server bosishlar logini qayta o'ynaganda aynan shu kesimlar chiqadi
+  /// (saytdagi `engine.ts` bilan bir xil).
+  void _sampleUntil(Duration elapsed) {
+    if (!started) return;
+    var until = elapsed.inMicroseconds ~/ 1000000;
+    if (config.mode == TypingMode.time) until = min(until, config.amount);
+    while (samples.length < until) {
+      final second = samples.length + 1;
       samples.add(TypingSample(
         second: second,
-        wpm: stats(elapsed).wpm,
+        wpm: stats(Duration(seconds: second)).wpm,
         raw: _secondKeys * 12.0,
         errors: _secondErrors,
       ));
       _secondKeys = 0;
       _secondErrors = 0;
     }
-    if (config.mode == TypingMode.time && second >= config.amount) {
+  }
+
+  /// Vaqt rejimida vaqt tugagan bo'lsa (taymer kechikkan bo'lsa ham), keyingi
+  /// bosishlar hisobga olinmaydi.
+  void _checkTime(Duration elapsed) {
+    if (started &&
+        config.mode == TypingMode.time &&
+        elapsed.inMicroseconds >= config.amount * 1000000) {
       _finish(Duration(seconds: config.amount));
     }
   }
@@ -212,8 +257,7 @@ class TypingEngine {
 
       if (isTypedWordCorrect(input, word)) {
         // So'zdan keyingi bo'sh joy ham hisobga olinadi (eng oxirgi so'zdan tashqari).
-        final hasSpace =
-            config.mode == TypingMode.time || i < words.length - 1;
+        final hasSpace = !_fixedLength || i < words.length - 1;
         wpmChars += word.length + (hasSpace ? 1 : 0);
       }
     }
@@ -235,7 +279,8 @@ class TypingEngine {
       if (prefixCorrect) wpmChars += current.length;
     }
 
-    final minutes = elapsed.inMilliseconds / 60000;
+    // Mikrosoniya aniqligida: server (JS) vaqtni millisoniya kasri bilan hisoblaydi.
+    final minutes = elapsed.inMicroseconds / 60000000;
     final keys = _correctKeys + _incorrectKeys;
 
     return TypingStats(

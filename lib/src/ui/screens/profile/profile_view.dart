@@ -1,7 +1,9 @@
 import 'package:dication/main.dart';
 import 'package:dication/src/core/config/app_router.dart';
 import 'package:dication/src/core/constants/app_constants.dart';
+import 'package:dication/src/core/models/typing_result.dart';
 import 'package:dication/src/core/services/account_service.dart';
+import 'package:dication/src/core/services/profile_service.dart';
 import 'package:dication/src/core/theme/app_theme.dart';
 import 'package:dication/src/providers/account_provider.dart';
 import 'package:dication/src/ui/pages/results_page.dart';
@@ -9,6 +11,7 @@ import 'package:dication/src/ui/screens/account/auth_sheet.dart';
 import 'package:dication/src/ui/screens/account/feedback_sheet.dart';
 import 'package:dication/src/ui/screens/additional_screens/about_app_screen.dart';
 import 'package:dication/src/ui/screens/additional_screens/app_info_screen.dart';
+import 'package:dication/src/ui/screens/profile/public_profile_page.dart';
 import 'package:dication/src/ui/widgets/app_badge.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
 import 'package:dication/src/ui/widgets/app_card.dart';
@@ -17,6 +20,7 @@ import 'package:dication/src/ui/widgets/app_ui.dart';
 import 'package:dication/src/ui/widgets/stat_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 String _formatDay(DateTime date) {
@@ -51,6 +55,13 @@ class ProfileView extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
             children: [
+              if (account != null)
+                _MenuItem(
+                  icon: Icons.badge_outlined,
+                  label: 'Ochiq profilim',
+                  hint: 'Boşqalar köradigan sahifa',
+                  onTap: () => AppRouter.go(context, PublicProfilePage(userId: account.id)),
+                ),
               _MenuItem(
                 icon: Icons.history,
                 label: 'Natijalarim',
@@ -201,7 +212,7 @@ class _AccountCard extends StatelessWidget {
       corners: true,
       child: Row(
         children: [
-          UserAvatar.of(account, size: 64),
+          _AvatarPicker(account: account),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -235,6 +246,107 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
+/// Profil rasmi: bosilsa galereyadan tanlanadi; rasm bo'lsa — o'chirish ham mumkin.
+class _AvatarPicker extends StatefulWidget {
+  final Account account;
+
+  const _AvatarPicker({required this.account});
+
+  @override
+  State<_AvatarPicker> createState() => _AvatarPickerState();
+}
+
+class _AvatarPickerState extends State<_AvatarPicker> {
+  bool _busy = false;
+
+  Future<void> _save(Future<List<int>?> Function() pick) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      final bytes = await pick();
+      // Tanlash bekor qilindi.
+      if (bytes != null && bytes.isEmpty) return;
+      await ProfileService.updateAvatar(widget.account.id, bytes);
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(accountErrorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Rasm kichraytirib olinadi (server 2 MB gacha qabul qiladi).
+  Future<List<int>?> _pickImage() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
+    return file == null ? const [] : await file.readAsBytes();
+  }
+
+  Future<void> _showMenu() async {
+    if (widget.account.avatarUrl == null) return _save(_pickImage);
+    final remove = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Yangi rasm tanlaş'),
+              onTap: () => Navigator.pop(context, false),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AppColors.error),
+              title: const Text('Rasmni öçiriş', style: TextStyle(color: AppColors.error)),
+              onTap: () => Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (remove == null) return;
+    await _save(remove ? () async => null : _pickImage);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Profil rasmini özgartiriş',
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: _busy ? null : _showMenu,
+        child: Stack(
+          children: [
+            Opacity(opacity: _busy ? 0.5 : 1, child: UserAvatar.of(widget.account, size: 64)),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: _busy
+                    ? const Padding(
+                        padding: EdgeInsets.all(5),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.photo_camera, size: 13, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Stats extends StatelessWidget {
   final UserHistory history;
 
@@ -244,7 +356,8 @@ class _Stats extends StatelessWidget {
   Widget build(BuildContext context) {
     final typing = history.typing;
     final works = history.works;
-    final bestWpm = typing.isEmpty ? 0.0 : typing.map((r) => r.wpm).reduce((a, b) => a > b ? a : b);
+    // Shubhali natijalar rekordga kirmaydi.
+    final bestWpm = TypingResult.bestWpm(typing) ?? 0.0;
     final avgBaho = works.isEmpty ? null : works.map((w) => w.baho).reduce((a, b) => a + b) / works.length;
     final streak = computeStreak(history);
     return Wrap(

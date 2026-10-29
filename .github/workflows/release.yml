@@ -1,0 +1,202 @@
+name: Release (Windows + macOS)
+
+# `v*` tegi push qilinganda (masalan v1.1.0) yoki qo'lda (Actions -> Run workflow):
+#   1) Windows: Flutter build -> Inno Setup o'rnatuvchi (ImloGo-Setup-<ver>.exe)
+#   2) macOS:   Flutter build -> ad-hoc imzo -> ImloGo-<ver>.dmg
+#   3) Ikkalasi bitta GitHub Release'ga yuklanadi (+ doimiy nomli nusxalar:
+#      ImloGo-Setup.exe, ImloGo.dmg -> releases/latest/download/...)
+#   4) Har bir platforma PocketBase'da ro'yxatga olinadi (sayt havolalarni shundan oladi).
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'GitHub Release yaratish/yangilash va PocketBase ga yozish (v<pubspec versiyasi> tegi bilan)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: 3.41.6
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.v.outputs.name }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version from pubspec.yaml
+        id: v
+        run: |
+          full=$(sed -n 's/^version:[[:space:]]*\([^[:space:]]*\).*/\1/p' pubspec.yaml | head -n1)
+          [ -n "$full" ] || { echo "pubspec.yaml da version topilmadi"; exit 1; }
+          name="${full%%+*}"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "tag=v$name" >> "$GITHUB_OUTPUT"
+          echo "pubspec version: $full -> $name"
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "v$name" ]; then
+            echo "Teg ($GITHUB_REF_NAME) pubspec versiyasiga (v$name) mos emas. pubspec.yaml ni yangilang."
+            exit 1
+          fi
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2.18.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Flutter build
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release
+
+      - name: Bundle MSVC runtime DLLs
+        # Flutter ilovasi VC++ runtime talab qiladi; uni ilova papkasiga qo'yamiz,
+        # shunda foydalanuvchi alohida "VC++ Redistributable" o'rnatishi shart emas.
+        shell: pwsh
+        run: |
+          $dest = 'build\windows\x64\runner\Release'
+          foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
+            Copy-Item "$env:WINDIR\System32\$dll" $dest -Force
+          }
+          Get-ChildItem $dest
+
+      - name: Install Inno Setup (if missing)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe topilmadi' }
+          "ISCC=$iscc" >> $env:GITHUB_ENV
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          & $env:ISCC `
+            "/DAppVersion=$env:VERSION" `
+            "/DSourceDir=$root\build\windows\x64\runner\Release" `
+            "/DOutputDir=$root\dist" `
+            "windows\installer\imlogo.iss"
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
+          Copy-Item "dist\ImloGo-Setup-$env:VERSION.exe" "dist\ImloGo-Setup.exe"
+          Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.exe
+          if-no-files-found: error
+
+  macos:
+    needs: version
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.version.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2.18.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Flutter build
+        run: |
+          flutter config --enable-macos-desktop
+          flutter pub get
+          flutter build macos --release
+
+      - name: Ad-hoc sign and package DMG
+        # Apple Developer sertifikati yo'q — ad-hoc imzo (notarizatsiyasiz).
+        # Avval ichki freymvorklar, keyin ilovaning o'zi entitlements bilan qayta imzolanadi
+        # (aks holda sandbox/tarmoq ruxsatlari yo'qolib qoladi).
+        run: |
+          app="build/macos/Build/Products/Release/Imlo Go.app"
+          stage="$RUNNER_TEMP/dmg"
+          mkdir -p "$stage" dist
+          cp -R "$app" "$stage/"
+          codesign --force --deep --sign - "$stage/Imlo Go.app"
+          codesign --force --sign - --entitlements macos/Runner/Release.entitlements "$stage/Imlo Go.app"
+          codesign --verify --deep --strict --verbose=2 "$stage/Imlo Go.app"
+          ln -s /Applications "$stage/Applications"
+          hdiutil create -volname "Imlo Go" -srcfolder "$stage" -ov -format UDZO "dist/ImloGo-$VERSION.dmg"
+          cp "dist/ImloGo-$VERSION.dmg" dist/ImloGo.dmg
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    needs: [version, windows, macos]
+    if: github.event_name == 'push' || inputs.publish
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.name }}
+      TAG: ${{ needs.version.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - run: ls -l dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2.2.2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Imlo Go ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          make_latest: 'true'
+          fail_on_unmatched_files: true
+          files: |
+            dist/ImloGo-Setup-${{ env.VERSION }}.exe
+            dist/ImloGo-Setup.exe
+            dist/ImloGo-${{ env.VERSION }}.dmg
+            dist/ImloGo.dmg
+
+      - name: Register release in PocketBase
+        env:
+          RELEASE_TOKEN: ${{ secrets.IMLOGO_RELEASE_TOKEN }}
+          BASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download
+        run: |
+          [ -n "$RELEASE_TOKEN" ] || { echo "IMLOGO_RELEASE_TOKEN secret o'rnatilmagan"; exit 1; }
+          register() {
+            platform="$1"; file="$2"
+            size=$(stat -c%s "dist/$file")
+            body=$(jq -nc --arg p "$platform" --arg v "$VERSION" \
+              --arg u "$BASE_URL/$TAG/$file" --argjson s "$size" \
+              '{platform:$p, version:$v, url:$u, size:$s}')
+            echo "-> $body"
+            curl --fail-with-body -sS -X POST "https://admin.imlogo.uz/api/imlogo/releases" \
+              -H "Content-Type: application/json" \
+              -H "X-Release-Token: $RELEASE_TOKEN" \
+              -d "$body"
+            echo
+          }
+          register windows "ImloGo-Setup-$VERSION.exe"
+          register macos   "ImloGo-$VERSION.dmg"

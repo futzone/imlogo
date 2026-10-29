@@ -97,7 +97,8 @@ class _ResultsPageState extends ConsumerState<ResultsPage> {
               );
             }
 
-            final best = results.map((r) => r.wpm).reduce((a, b) => a > b ? a : b);
+            // Shubhali natijalar rekordga kirmaydi.
+            final best = TypingResult.bestWpm(results) ?? 0;
             final average =
                 results.map((r) => r.wpm).reduce((a, b) => a + b) / results.length;
             final accuracy = results.map((r) => r.accuracy).reduce((a, b) => a + b) /

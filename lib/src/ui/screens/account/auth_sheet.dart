@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dication/src/core/services/account_service.dart';
 import 'package:dication/src/core/theme/app_theme.dart';
 import 'package:dication/src/ui/widgets/app_buttons.dart';
@@ -30,7 +32,14 @@ class _AuthSheetState extends State<AuthSheet> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   _AuthMode _mode = _AuthMode.signIn;
+
+  /// Email forma yuborilmoqda. Google kutilayotganda forma bloklanmaydi.
   bool _busy = false;
+
+  /// Google brauzerda ochiq. SDK foydalanuvchi brauzerdan qaytib kelganini
+  /// sezmaydi va abadiy kutadi — shuning uchun bekor qilish mumkin.
+  bool _googleBusy = false;
+  int _googleAttempt = 0;
   String? _error;
   String? _notice;
 
@@ -49,14 +58,44 @@ class _AuthSheetState extends State<AuthSheet> {
       _notice = null;
     });
     try {
-      await action();
+      // Server javob bermay qolsa, tugma "Kuting…" holatida qotib qolmasin.
+      await action().timeout(const Duration(seconds: 30));
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
-      if (mounted) setState(() => _error = accountErrorMessage(error));
+      if (mounted) {
+        setState(() => _error = error is TimeoutException
+            ? 'Server javob bermadi. Birozdan söng qayta urinib köring'
+            : accountErrorMessage(error));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
+
+  Future<void> _google() async {
+    final attempt = ++_googleAttempt;
+    setState(() {
+      _googleBusy = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      await AccountService.signInWithGoogle().timeout(const Duration(minutes: 5));
+      if (mounted && attempt == _googleAttempt) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted || attempt != _googleAttempt) return;
+      setState(() => _error = error is TimeoutException
+          ? 'Google orqali kiriş vaqti tugadi. Qayta urinib köring'
+          : accountErrorMessage(error));
+    } finally {
+      if (mounted && attempt == _googleAttempt) setState(() => _googleBusy = false);
+    }
+  }
+
+  void _cancelGoogle() => setState(() {
+        _googleAttempt++;
+        _googleBusy = false;
+      });
 
   void _submit() {
     if (_busy) return;
@@ -115,11 +154,11 @@ class _AuthSheetState extends State<AuthSheet> {
           ),
         const SizedBox(height: 12),
         AppButton(
-          label: 'Google orqali kiriş',
-          icon: Icons.g_mobiledata,
+          label: _googleBusy ? 'Google kutilmoqda — bekor qiliş' : 'Google orqali kiriş',
+          icon: _googleBusy ? Icons.close : Icons.g_mobiledata,
           variant: AppButtonVariant.outline,
           expand: true,
-          onPressed: _busy ? null : () => _run(AccountService.signInWithGoogle),
+          onPressed: _busy ? null : (_googleBusy ? _cancelGoogle : _google),
         ),
         const SizedBox(height: 16),
         Row(

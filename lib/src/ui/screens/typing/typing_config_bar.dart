@@ -34,19 +34,24 @@ class TypingConfigBar extends StatelessWidget {
           onTap: () => onChanged(config.copyWith(alphabet: entry.key)),
         ),
     ];
+    // Gaplar rejimida qo'shimchalar o'chiriladi: gaplarda tinish belgilari va raqamlar o'zi bor.
+    final extras = config.hasExtras;
     final toggles = [
       _Option(
         icon: Icons.alternate_email,
         label: 'tiniş belgilari',
-        selected: config.punctuation,
-        onTap: () =>
-            onChanged(config.copyWith(punctuation: !config.punctuation)),
+        selected: extras && config.punctuation,
+        onTap: extras
+            ? () => onChanged(config.copyWith(punctuation: !config.punctuation))
+            : null,
       ),
       _Option(
         icon: Icons.tag,
         label: 'raqamlar',
-        selected: config.numbers,
-        onTap: () => onChanged(config.copyWith(numbers: !config.numbers)),
+        selected: extras && config.numbers,
+        onTap: extras
+            ? () => onChanged(config.copyWith(numbers: !config.numbers))
+            : null,
       ),
     ];
     final modes = [
@@ -61,6 +66,12 @@ class TypingConfigBar extends StatelessWidget {
         label: 'sözlar',
         selected: config.mode == TypingMode.words,
         onTap: () => onChanged(config.withMode(TypingMode.words)),
+      ),
+      _Option(
+        icon: compact ? null : Icons.format_quote,
+        label: 'gaplar',
+        selected: config.mode == TypingMode.sentences,
+        onTap: () => onChanged(config.withMode(TypingMode.sentences)),
       ),
     ];
     final amounts = [
@@ -142,7 +153,9 @@ class _Option extends StatelessWidget {
   final IconData? icon;
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+
+  /// `null` — tanlov o'chirilgan (xira ko'rinadi, bosilmaydi).
+  final VoidCallback? onTap;
 
   const _Option({
     this.icon,
@@ -153,10 +166,14 @@ class _Option extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final disabled = onTap == null;
     return Semantics(
       button: true,
+      enabled: !disabled,
       selected: selected,
-      child: HoveredWidget(
+      child: Opacity(
+        opacity: disabled ? 0.4 : 1,
+        child: HoveredWidget(
         onPressed: onTap,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         builder: (hovered) {
@@ -195,6 +212,7 @@ class _Option extends StatelessWidget {
             ),
           );
         },
+      ),
       ),
     );
   }

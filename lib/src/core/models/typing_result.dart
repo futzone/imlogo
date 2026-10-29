@@ -17,6 +17,10 @@ class TypingResult {
   final double seconds;
   final List<TypingSample> samples;
 
+  /// Shubhali natija belgilari (qarang: analyzeTyping). Bo'sh bo'lmasa, natija
+  /// reytingga ham, "yangi rekord" ga ham kirmaydi.
+  final List<String> flags;
+
   const TypingResult({
     required this.id,
     required this.createdAt,
@@ -31,7 +35,37 @@ class TypingResult {
     required this.missedChars,
     required this.seconds,
     required this.samples,
+    this.flags = const [],
   });
+
+  /// Natija rekord va reyting uchun hisobga olinadimi.
+  bool get isTrusted => flags.isEmpty;
+
+  TypingResult withFlags(List<String> flags) => TypingResult(
+        id: id,
+        createdAt: createdAt,
+        config: config,
+        wpm: wpm,
+        raw: raw,
+        accuracy: accuracy,
+        consistency: consistency,
+        correctChars: correctChars,
+        incorrectChars: incorrectChars,
+        extraChars: extraChars,
+        missedChars: missedChars,
+        seconds: seconds,
+        samples: samples,
+        flags: flags,
+      );
+
+  /// Rekord: ishonchli natijalardagi eng yuqori WPM (bo'lmasa — `null`).
+  static double? bestWpm(Iterable<TypingResult> results) {
+    double? best;
+    for (final result in results) {
+      if (result.isTrusted && (best == null || result.wpm > best)) best = result.wpm;
+    }
+    return best;
+  }
 
   factory TypingResult.fromEngine(TypingEngine engine) {
     final elapsed = engine.finishedAt ?? Duration.zero;
@@ -49,7 +83,7 @@ class TypingResult {
       incorrectChars: stats.incorrectChars,
       extraChars: stats.extraChars,
       missedChars: stats.missedChars,
-      seconds: elapsed.inMilliseconds / 1000,
+      seconds: elapsed.inMicroseconds / 1000000,
       samples: List.of(engine.samples),
     );
   }
@@ -74,6 +108,7 @@ class TypingResult {
         'missedChars': missedChars,
         'seconds': seconds,
         'samples': samples.map((s) => s.toJson()).toList(),
+        if (flags.isNotEmpty) 'flags': flags,
       };
 
   factory TypingResult.fromJson(Map<String, dynamic> json) {
@@ -93,6 +128,7 @@ class TypingResult {
       samples: (json['samples'] as List)
           .map((s) => TypingSample.fromJson(s as List))
           .toList(),
+      flags: [for (final flag in (json['flags'] as List? ?? const [])) flag.toString()],
     );
   }
 }

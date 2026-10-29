@@ -16,6 +16,29 @@ List<String> parseWordList(String raw) {
   return words;
 }
 
+/// `assets/words/uz-sentences.txt`: har qatorda bitta gap (sayt repozitoriyasida
+/// `npm run typing:sentences` bilan yig'iladi).
+List<String> parseSentenceList(String raw) => [
+      for (final line in raw.split('\n'))
+        if (line.trim().isNotEmpty && !line.trim().startsWith('#'))
+          normalizeTypingText(line.trim()),
+    ];
+
+/// [count] ta tasodifiy gap (ketma-ket takrorlanmaydi) so'zlarga ajratilgan holda.
+List<String> createSentenceWords(List<String> pool, int count, {Random? random}) {
+  assert(pool.isNotEmpty);
+  final rnd = random ?? Random();
+  final words = <String>[];
+  var last = -1;
+  for (var i = 0; i < count; i++) {
+    var index = rnd.nextInt(pool.length);
+    if (index == last && pool.length > 1) index = (index + 1) % pool.length;
+    last = index;
+    words.addAll(pool[index].split(' ').where((word) => word.isNotEmpty));
+  }
+  return words;
+}
+
 /// So'zlar to'plamidan mashq uchun tasodifiy so'zlar ketma-ketligini beradi.
 class TypingWordGenerator {
   final List<String> pool;

@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:dication/src/core/config/app_router.dart';
 import 'package:dication/src/core/services/account_service.dart';
+import 'package:dication/src/core/services/profile_service.dart';
 import 'package:dication/src/core/theme/app_theme.dart';
 import 'package:dication/src/providers/account_provider.dart';
 import 'package:dication/src/ui/screens/account/auth_sheet.dart';
+import 'package:dication/src/ui/screens/profile/public_profile_page.dart';
 import 'package:dication/src/ui/widgets/app_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,7 +119,10 @@ final myRankProvider =
   }
 });
 
-/// "Hamjamiyat": tez yozish va diktant bo'yicha reytinglar hamda haftalik musobaqa.
+/// Diktantlarda eng ko'p xato qilinadigan so'zlar.
+final mistakeWordsProvider = FutureProvider.autoDispose<List<MistakeWord>>((ref) => ProfileService.fetchMistakeWords());
+
+/// "Hamjamiyat": tez yozish va diktant bo'yicha reytinglar, haftalik musobaqa va xato so'zlar.
 class CommunityView extends ConsumerStatefulWidget {
   const CommunityView({super.key});
 
@@ -126,13 +132,27 @@ class CommunityView extends ConsumerStatefulWidget {
 
 class _CommunityViewState extends ConsumerState<CommunityView> {
   Board _board = Board.typing;
+
+  /// "Xato so'zlar" yorlig'i tanlangan.
+  bool _mistakes = false;
   int _metric = 0;
   LeaderboardPeriod _period = LeaderboardPeriod.week;
 
   LeaderboardQuery get _query => (board: _board, period: _period, metric: _metric, limit: 50);
 
+  Widget get _tabs => Segmented<String>(
+        options: const {'typing': 'Tez yoziş', 'dictation': 'Diktant', 'mistakes': 'Xato sözlar'},
+        value: _mistakes ? 'mistakes' : _board.name,
+        onChanged: (tab) => setState(() {
+          _mistakes = tab == 'mistakes';
+          if (!_mistakes) _board = Board.values.byName(tab);
+          _metric = 0;
+        }),
+      );
+
   @override
   Widget build(BuildContext context) {
+    if (_mistakes) return _buildMistakes();
     final account = ref.watch(authProvider);
     final metric = LeaderMetric.all[_board]![_metric];
     final rows = ref.watch(leaderboardProvider(_query));
@@ -156,14 +176,7 @@ class _CommunityViewState extends ConsumerState<CommunityView> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            Segmented<Board>(
-              options: const {Board.typing: 'Tez yoziş', Board.dictation: 'Diktant'},
-              value: _board,
-              onChanged: (board) => setState(() {
-                _board = board;
-                _metric = 0;
-              }),
-            ),
+            _tabs,
             Segmented<LeaderboardPeriod>(
               options: const {LeaderboardPeriod.week: 'Şu hafta', LeaderboardPeriod.all: 'Hamma vaqt'},
               value: _period,
@@ -236,6 +249,125 @@ class _CommunityViewState extends ConsumerState<CommunityView> {
       ],
     );
   }
+}
+
+extension on _CommunityViewState {
+  Widget _buildMistakes() {
+    final words = ref.watch(mistakeWordsProvider);
+    return SectionScroll(
+      onRefresh: () async => ref.invalidate(mistakeWordsProvider),
+      children: [
+        const PageHeading(
+          title: 'Hamjamiyat',
+          subtitle: 'Barça foydalanuvçilar diktantlarida eng köp xato yozilgan sözlar.',
+        ),
+        const SizedBox(height: 20),
+        Align(alignment: Alignment.centerLeft, child: _tabs),
+        const SizedBox(height: 8),
+        Text('Yonida — eng köp uçraydigan notöğri yoziliş.', style: AppText.body(12, color: AppColors.muted)),
+        const SizedBox(height: 16),
+        words.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(48),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, __) => EmptyState(
+            icon: Icons.spellcheck,
+            color: AppColors.error,
+            text: 'Röyxatni yuklab bölmadi. Birozdan söng qayta urinib köring.',
+            action: SmallButton(label: 'Qayta uriniş', onPressed: () => ref.invalidate(mistakeWordsProvider)),
+          ),
+          data: (words) => words.isEmpty
+              ? const EmptyState(icon: Icons.spellcheck, text: 'Hali ma’lumot yetarli emas. Diktant yozing!')
+              : Column(
+                  children: [
+                    for (var i = 0; i < words.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: MistakeItem(rank: i + 1, word: words[i], top: words.first.mistakes),
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Xato so'zlar ro'yxatidagi bitta qator; fondagi chiziq — eng ko'p xatoga nisbatan.
+class MistakeItem extends StatelessWidget {
+  final int rank;
+  final MistakeWord word;
+  final int top;
+
+  const MistakeItem({super.key, required this.rank, required this.word, required this.top});
+
+  @override
+  Widget build(BuildContext context) {
+    final share = top == 0 ? 0.0 : (word.mistakes / top).clamp(0.04, 1.0);
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: share,
+              child: ColoredBox(color: AppColors.error.withValues(alpha: 0.06)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                SizedBox(width: 28, child: Center(child: rankBadge(rank))),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(word.word, style: AppText.heading(18, weight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text.rich(
+                        TextSpan(
+                          style: AppText.mono(11, color: AppColors.muted),
+                          children: [
+                            const TextSpan(text: 'köpinça: '),
+                            TextSpan(
+                              text: word.variant,
+                              style: const TextStyle(color: AppColors.error, decoration: TextDecoration.lineThrough),
+                            ),
+                            TextSpan(text: ' · ${word.users} kişi'),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Text('${word.mistakes} ta', style: AppText.mono(17, color: AppColors.error)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Reytingdagi o'rin belgisi: 1–3 — medal, qolganlari — raqam.
+Widget rankBadge(int rank) {
+  const colors = {1: Color(0xFFE0A800), 2: Color(0xFF9AA3B2), 3: Color(0xFFC27C4E)};
+  if (rank <= 3) {
+    return Icon(rank == 1 ? Icons.workspace_premium : Icons.military_tech, size: 22, color: colors[rank]);
+  }
+  return Text('$rank', style: AppText.mono(14, color: AppColors.muted));
 }
 
 /// Haftalik musobaqa dushanba 00:00 (Toshkent, UTC+5) da yangilanadi.
@@ -339,32 +471,37 @@ class _WeeklyBannerState extends ConsumerState<WeeklyBanner> {
               runSpacing: 8,
               children: [
                 for (var i = 0; i < winners.length; i++)
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(
-                          radius: 13,
-                          backgroundColor: Colors.white,
-                          child: Text('${i + 1}', style: AppText.mono(12, color: AppColors.primary)),
-                        ),
-                        const SizedBox(width: 8),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 140),
-                          child: Text(
-                            winners[i].name,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.body(14, weight: FontWeight.w600, color: Colors.white),
+                  GestureDetector(
+                    onTap: () => AppRouter.go(context, PublicProfilePage(userId: winners[i].id)),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 13,
+                            backgroundColor: Colors.white,
+                            child: Text('${i + 1}', style: AppText.mono(12, color: AppColors.primary)),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(metric.format(winners[i]), style: AppText.mono(12, color: white70)),
-                      ],
+                          const SizedBox(width: 6),
+                          UserAvatar(name: winners[i].name, imageUrl: winners[i].avatarUrl, size: 26),
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 140),
+                            child: Text(
+                              winners[i].name,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.body(14, weight: FontWeight.w600, color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(metric.format(winners[i]), style: AppText.mono(12, color: white70)),
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -395,17 +532,9 @@ class LeaderItem extends StatelessWidget {
     this.compact = false,
   });
 
-  Widget _rankBadge() {
-    const colors = {1: Color(0xFFE0A800), 2: Color(0xFF9AA3B2), 3: Color(0xFFC27C4E)};
-    if (rank <= 3) {
-      return Icon(rank == 1 ? Icons.workspace_premium : Icons.military_tech, size: 22, color: colors[rank]);
-    }
-    return Text('$rank', style: AppText.mono(14, color: AppColors.muted));
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final item = Container(
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: compact ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -418,9 +547,9 @@ class LeaderItem extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: 28, child: Center(child: _rankBadge())),
+          SizedBox(width: 28, child: Center(child: rankBadge(rank))),
           const SizedBox(width: 10),
-          UserAvatar(name: row.name, size: compact ? 30 : 36),
+          UserAvatar(name: row.name, imageUrl: row.avatarUrl, size: compact ? 30 : 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -456,6 +585,15 @@ class LeaderItem extends StatelessWidget {
           const SizedBox(width: 8),
           Text(metric.format(row), style: AppText.mono(compact ? 15 : 18, color: AppColors.primary)),
         ],
+      ),
+    );
+    // Bosilsa — foydalanuvchi profili.
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: () => AppRouter.go(context, PublicProfilePage(userId: row.id)),
+        child: item,
       ),
     );
   }

@@ -49,6 +49,10 @@ dependencies:
   hive_flutter: ^1.1.0
   url_launcher: ^6.3.1
   pocketbase: ^0.23.2
+  # Brauzerda soxta (script yuborgan) kiritish hodisalarini aniqlash uchun.
+  web: ^1.1.1
+  image_picker: ^1.2.4
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

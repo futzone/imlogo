@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dication/src/core/models/typing_result.dart';
 import 'package:dication/src/core/translit/translit.dart';
 import 'package:dication/src/core/typing/typing_config.dart';
+import 'package:dication/src/core/typing/typing_text.dart';
 import 'package:dication/src/core/typing/typing_words.dart';
 import 'package:dication/src/providers/translit_provider.dart';
 import 'package:flutter/services.dart';
@@ -21,6 +22,17 @@ final typingWordsProvider = FutureProvider.family<List<String>, Alphabet>((ref, 
   if (alphabet == Alphabet.lotin) return words;
   final lexicon = await ref.watch(lexiconProvider.future);
   return [for (final word in words) transliterate(word, Alphabet.lotin, alphabet, lexicon)];
+});
+
+/// "Gaplar" rejimi uchun gaplar to'plami (`assets/words/uz-sentences.txt`).
+final typingSentencesProvider = FutureProvider.family<List<String>, Alphabet>((ref, alphabet) async {
+  final raw = await rootBundle.loadString('assets/words/uz-sentences.txt');
+  final sentences = parseSentenceList(raw);
+  if (alphabet == Alphabet.lotin) return sentences;
+  final lexicon = await ref.watch(lexiconProvider.future);
+  return [
+    for (final sentence in sentences) normalizeTypingText(transliterate(sentence, Alphabet.lotin, alphabet, lexicon)),
+  ];
 });
 
 /// Saqlangan natijalar, eng yangisi birinchi.

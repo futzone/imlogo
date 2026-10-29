@@ -4,8 +4,11 @@ import 'package:dication/src/core/models/typing_result.dart';
 import 'package:dication/src/core/models/work.dart';
 import 'package:dication/src/core/services/account_service.dart';
 import 'package:dication/src/core/services/pb_client.dart';
+import 'package:dication/src/core/services/profile_service.dart';
 import 'package:dication/src/providers/history_provider.dart';
 import 'package:dication/src/providers/typing_provider.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -14,9 +17,21 @@ import 'package:pocketbase/pocketbase.dart';
 class AuthNotifier extends StateNotifier<Account?> {
   late final StreamSubscription _subscription;
 
+  /// Oxirgi faollik vaqti (profilda "oxirgi marta onlayn") shu oraliqda yangilanadi.
+  static const _pingInterval = Duration(minutes: 5);
+  late final Timer _pingTimer;
+  late final AppLifecycleListener _lifecycle;
+
   AuthNotifier() : super(_current()) {
     _subscription = pb.authStore.onChange.listen((_) => state = _current());
+    _pingTimer = Timer.periodic(_pingInterval, (_) => _ping());
+    _lifecycle = AppLifecycleListener(onResume: _ping);
     _refresh();
+  }
+
+  void _ping() {
+    if (state == null || SchedulerBinding.instance.lifecycleState == AppLifecycleState.paused) return;
+    ProfileService.ping().catchError((_) {});
   }
 
   static Account? _current() {
@@ -37,6 +52,8 @@ class AuthNotifier extends StateNotifier<Account?> {
   @override
   void dispose() {
     _subscription.cancel();
+    _pingTimer.cancel();
+    _lifecycle.dispose();
     super.dispose();
   }
 }

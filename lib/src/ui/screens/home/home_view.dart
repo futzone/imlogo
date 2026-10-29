@@ -97,7 +97,8 @@ class _StreakCard extends StatelessWidget {
     final streak = history == null ? null : computeStreak(history);
     final typing = history?.typing ?? const <TypingResult>[];
     final works = history?.works ?? const <Work>[];
-    final bestWpm = typing.isEmpty ? 0 : typing.map((r) => r.wpm).reduce((a, b) => a > b ? a : b);
+    // Shubhali natijalar rekordga kirmaydi.
+    final bestWpm = TypingResult.bestWpm(typing) ?? 0;
     const flame = Color(0xFFF97316);
 
     return AppCard(
